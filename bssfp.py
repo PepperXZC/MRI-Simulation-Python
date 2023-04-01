@@ -67,9 +67,12 @@ class sequence:
         
         self.temp_x = []
         self.temp_z = []
+        self.alpha = []
+        self.x = 0
     
     def RF(self, fa):
         # fa = self.fa_sequence[num_rf]
+        self.temp_x, self.temp_z = [], []
         Rflip = matrix_rot.xrot(fa * math.pi / 180).to(device)
         self.data = self.data @ Rflip.T
         time = self.TE - self.tau_x / 2 - self.tau_y
@@ -78,11 +81,21 @@ class sequence:
             for r in range(self.point_index[0], self.point_index[1]):
                 self.data[l][r] = self.data[l][r] @ A.T + B
         # print(self.data[self.point_index[0]:self.point_index[1], self.point_index[0]:self.point_index[1]])
-        
+
         self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
         self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
-        plt.scatter(self.temp_x, self.temp_z)
-        plt.xlim((-1, 1))
+        
+        plt.clf()
+        # self.x = 0
+        # self.alpha = []
+        self.alpha.append(np.angle(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu().numpy() + self.data[self.point_index[0], self.point_index[0], 0, 1].cpu().numpy()*1j) * 180 / np.pi)
+        self.x += 1
+        self.x_time = np.arange(0, self.x, 1)
+        plt.scatter(self.x_time, self.alpha)
+        plt.grid()
+        plt.pause(0.1)
+        plt.ioff()
+        # plt.xlim((-1, 1))
         # plt.ylim((-1e-5,1e-5))
     
     def get_Gy_tensor(self, num_rf):
@@ -100,14 +113,14 @@ class sequence:
             for l in range(self.point_index[0], self.point_index[1]):
                 for r in range(self.point_index[0], self.point_index[1]):
                     self.data[l][r] = self.data[l][r] @ A.T + B
-            self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
-            # print(self.data[0, 0, 0, 1])
-            self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
-            plt.clf()
-            plt.scatter(self.temp_x, self.temp_z)
-            plt.xlim((-1, 1))
-            plt.pause(0.1)         # 暂停一秒
-            plt.ioff() 
+            # self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
+            # # print(self.data[0, 0, 0, 1])
+            # self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
+            # plt.clf()
+            # plt.scatter(self.temp_x, self.temp_z)
+            # plt.xlim((-1, 1))
+            # plt.pause(0.1)         # 暂停一秒
+            # plt.ioff() 
         self.readout_num = len(fa_sequence) - prep_num
 
     def phase_encoding(self, num_rf):
@@ -121,20 +134,19 @@ class sequence:
         self.gradient_matrix += Gx_tensor
         self.gradient_matrix += Gy_tensor
         self.gradient_matrix = self.gradient_matrix.to(device)
+        # self.temp_x, self.temp_z = [], []
         for l in range(self.point_index[0], self.point_index[1]):
             for r in range(self.point_index[0], self.point_index[1]):
                 # if self.data[i][j][0][2] != 0:
                 df = self.gradient_matrix[l][r] # TODO: 考虑时间的话，这个真的对吗？
                 A, B = freprecess.res(self.tau_y, self.T1, self.T2, df + self.w0)
                 self.data[l][r] = self.data[l][r] @ A.T + B
-        self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
-            # print(self.data[0, 0, 0, 1])
-        self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
-        plt.clf()
-        plt.scatter(self.temp_x, self.temp_z)
-        plt.xlim((-1, 1))
-        plt.pause(0.1)         # 暂停一秒
-        plt.ioff() 
+                # self.temp_x.append(self.data[l, r, 0, 0].cpu())
+                #     # print(self.data[0, 0, 0, 1])
+                # self.temp_z.append(self.data[l, r, 0, 1].cpu())
+        # plt.clf()   # 暂停一秒
+        # plt.ioff()
+        
 
     def readout_encoding(self, num_rf):
         # exp_y = torch.asarray([cmath.exp(-1 * 2j*math.pi*ky*y[0]) for y in self.position_y]).reshape(-1, 1).to(device)
@@ -153,7 +165,19 @@ class sequence:
                 self.data[self.point_index[0]:self.point_index[1], r] = self.data[self.point_index[0]:self.point_index[1], r] @ A.T + B
             img_matrix = torch.complex(self.data[:, :, :, 0], self.data[:, :, :, 1]).to(device)
             sample = img_matrix.sum()
-            self.kspace_img[num_rf, i] = sample if num_rf % 2 == 0 else - sample
+            self.kspace_img[num_rf, i] = - sample if num_rf % 2 == 0 else sample
+            if i == len(Gx_time) // 2:
+                plt.clf()
+        # self.x = 0
+        # self.alpha = []
+                self.alpha.append(np.angle(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu().numpy() + self.data[self.point_index[0], self.point_index[0], 0, 1].cpu().numpy()*1j) * 180 / np.pi)
+                self.x += 1
+                self.x_time = np.arange(0, self.x, 1)
+                plt.scatter(self.x_time, self.alpha)
+                plt.grid()
+                plt.pause(0.1)
+                plt.ioff()
+         
 
     def rewind(self, num_rf):
         Gy_tensor = - self.get_Gy_tensor(num_rf)
@@ -179,10 +203,15 @@ class sequence:
             for r in range(self.point_index[0], self.point_index[1]):
                 self.data[l][r] = self.data[l][r] @ A.T + B
         
-        self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
-        self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
-        plt.scatter(self.temp_x, self.temp_z)
-        plt.xlim((-1, 1))
+        plt.clf()
+        self.alpha.append(np.angle(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu().numpy() + self.data[self.point_index[0], self.point_index[0], 0, 1].cpu().numpy()*1j) * 180 / np.pi)
+        self.x += 1
+        self.x_time = np.arange(0, self.x, 1)
+        plt.scatter(self.x_time, self.alpha)
+        plt.grid()
+        plt.pause(0.1)
+        plt.ioff()
+        # plt.xlim((-1, 1))
 
 # test for watching data
 
@@ -201,3 +230,12 @@ class sequence:
 
 # print(self.data[self.point_index[0]:self.point_index[1], self.point_index[0]:self.point_index[1]])
 # print(self.data[self.point_index[0]][self.point_index[0]])
+
+# self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
+#             # print(self.data[0, 0, 0, 1])
+# self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
+# plt.clf()
+# plt.scatter(self.temp_x, self.temp_z)
+# plt.xlim((-1, 1))
+# plt.pause(0.1)         # 暂停一秒
+# plt.ioff() 

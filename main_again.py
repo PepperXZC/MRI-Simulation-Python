@@ -23,9 +23,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class info:
     def __init__(self, 
-        T1_generate = 800, 
-        T2 = 200, 
-        TR = 2.7,
+        T1_generate = 900, 
+        T2 = 80, 
+        TR = 7,
         # TFE = 49,
         fa = 60,
         b0 = 1.5, # Tesla
@@ -82,6 +82,7 @@ class info:
         self.Gyp = self.ky_max * 1e3/ (self.gamma * self.tau_y)
         self.Gyi = self.delta_ky * 1e3/ (self.gamma * self.tau_y)
         # self.Gx = Gx
+        print("hi")
         
         # self.tau_x = tau_x
         
@@ -103,6 +104,9 @@ if __name__ == "__main__":
     # 这是个范围
     # point_index = (body.length // 2, body.length // 2 + 1)
     point_index = (body.lower, body.upper)
+
+    # 单点时使用这个：
+    # point_index = (10, 10 + 1)
     # point_index = [(i, j) for (i, j) in ]
     slice_data = image.slice_select(body, 32, 1)
 
@@ -123,8 +127,8 @@ if __name__ == "__main__":
     for i in tqdm(range(test_info.N_pe)):
         plt.clf()
         seq.RF(fa_sequence[i + prep_num])
-        plt.pause(0.1)         # 暂停一秒
-        plt.ioff()
+        # plt.pause(0.1)         # 暂停一秒
+        # plt.ioff()
         seq.phase_encoding(i)
         seq.readout_encoding(i)
         seq.rewind(i)
@@ -134,6 +138,14 @@ if __name__ == "__main__":
     plt.clf()
     torch.save(seq.kspace_img, 'kspace.pt')
     res = abs(seq.kspace_img)
+    plt.subplot(1,2,1)
+    plt.imshow(res, cmap=plt.cm.gray)
+
+    ft_mat = torch.fft.ifft2(seq.kspace_img)
+    ft_mat = torch.fft.ifftshift(ft_mat)
+    # ft_mat = torch.fft.fftshift(ft_mat)
+    res = abs(ft_mat).numpy()
+    plt.subplot(1,2,2)
     plt.imshow(res, cmap=plt.cm.gray)
     plt.show()
     

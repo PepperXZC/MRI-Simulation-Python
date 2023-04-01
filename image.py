@@ -6,8 +6,14 @@ class body:
         self.length = length
         self.data = torch.zeros(length, length, length, 3)
         # 进一步地简化：中心点初始值均为[0,0,1]
-        self.lower, self.upper = length//2 - 10, length//2 + 10
+
+        # 正方形
+        self.lower, self.upper = length//2 - 5, length//2 + 5
+
         self.data[self.lower:self.upper,self.lower:self.upper,:,2] = 1
+
+        # 单点
+        # self.data[10,10,:,2] = 1
         # self.data[self.length//2,self.length//2,:,2] = 1
         self.gamma = gamma # gamma / 2pi = 42.58 MHz/T
 
