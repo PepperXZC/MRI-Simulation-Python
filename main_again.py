@@ -25,7 +25,7 @@ class info:
     def __init__(self, 
         T1_generate = 900, 
         T2 = 80, 
-        TR = 7,
+        TR = 5,
         # TFE = 49,
         fa = 60,
         b0 = 1.5, # Tesla
@@ -33,7 +33,7 @@ class info:
         receiver_bandwidth = 83.3, # khz
         gamma = 4258, # Hz / G
         delta = 0.1, # spatial resolution delta
-        fov = 12.8,  # cm
+        fov = 6.4,  # cm
         # tau_y = 0.29
         
     ) -> None:
@@ -99,18 +99,21 @@ class info:
 if __name__ == "__main__":
     test_info = info()
     gamma = 4258
-    body = image.body(128, test_info.gamma)
+    body = image.body(64, test_info.gamma)
 
     # 这是个范围
     # point_index = (body.length // 2, body.length // 2 + 1)
-    point_index = (body.lower, body.upper)
+    # point_index = (body.lower, body.upper)
+    
 
     # 单点时使用这个：
-    # point_index = (10, 10 + 1)
+    point_index = (32, 32 + 1)
     # point_index = [(i, j) for (i, j) in ]
-    slice_data = image.slice_select(body, 32, 1)
+    slice_thickness = 5
+    slice_data = image.slice_select(body, 32, slice_thickness)
 
-    data = slice_data[point_index[0], point_index[1]]
+    # data = slice_data[point_index[0], point_index[1]]
+    # slice_index = (slice_lower, slice_upper)
     print(slice_data[point_index[0], point_index[0]])
     # print(gradient.get_Gx())
 

@@ -30,6 +30,7 @@ length = 64
 
 ft_mat = torch.fft.ifft2(mat)
 ft_mat = torch.fft.ifftshift(ft_mat)
+# ft_mat = torch.fft.ifftshift(ft_mat)
 # ft_mat[10,10] = 0
 # ft_mat = torch.fft.fftshift(ft_mat)
 # ft_mat = torch.fft.fftshift(ft_mat)
@@ -38,6 +39,7 @@ ft_mat = torch.fft.ifftshift(ft_mat)
 # ft_mat = torch.fft.fftshift(ft_mat)
 # # ft_mat = torch.fft.fftshift(mat)
 res = abs(ft_mat).numpy()
+res[10, 10] = 0
 
 # print(res.shape)
 # lower, upper = length // 2 - 15, length//2 + 15

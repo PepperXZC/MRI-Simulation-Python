@@ -49,6 +49,7 @@ class sequence:
         self.delta_t = info.delta_t 
 
         self.point_index = point_index
+        self.slice_thickness = body_slice.shape[2]
 
 
         self.fa_sequence = torch.zeros(self.N_pe + 1)
@@ -79,7 +80,8 @@ class sequence:
         A, B = freprecess.res(time, self.T1, self.T2, 0 + self.w0)
         for l in range(self.point_index[0], self.point_index[1]):
             for r in range(self.point_index[0], self.point_index[1]):
-                self.data[l][r] = self.data[l][r] @ A.T + B
+                for z in range(self.slice_thickness):
+                    self.data[l, r, z] = self.data[l, r, z] @ A.T + B
         # print(self.data[self.point_index[0]:self.point_index[1], self.point_index[0]:self.point_index[1]])
 
         self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
@@ -112,7 +114,8 @@ class sequence:
             A, B = freprecess.res(TR, self.T1, self.T2, 0 + self.w0)
             for l in range(self.point_index[0], self.point_index[1]):
                 for r in range(self.point_index[0], self.point_index[1]):
-                    self.data[l][r] = self.data[l][r] @ A.T + B
+                    for z in range(self.slice_thickness):
+                        self.data[l, r, z] = self.data[l, r, z] @ A.T + B
             # self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
             # # print(self.data[0, 0, 0, 1])
             # self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
@@ -137,10 +140,11 @@ class sequence:
         # self.temp_x, self.temp_z = [], []
         for l in range(self.point_index[0], self.point_index[1]):
             for r in range(self.point_index[0], self.point_index[1]):
-                # if self.data[i][j][0][2] != 0:
-                df = self.gradient_matrix[l][r] # TODO: 考虑时间的话，这个真的对吗？
-                A, B = freprecess.res(self.tau_y, self.T1, self.T2, df + self.w0)
-                self.data[l][r] = self.data[l][r] @ A.T + B
+                for z in range(self.slice_thickness):
+                    # self.data[l, r, z] = self.data[l, r, z] @ A.T + B
+                    df = self.gradient_matrix[l][r] # TODO: 考虑时间的话，这个真的对吗？
+                    A, B = freprecess.res(self.tau_y, self.T1, self.T2, df + self.w0)
+                    self.data[l, r, z] = self.data[l, r, z] @ A.T + B
                 # self.temp_x.append(self.data[l, r, 0, 0].cpu())
                 #     # print(self.data[0, 0, 0, 1])
                 # self.temp_z.append(self.data[l, r, 0, 1].cpu())
@@ -162,7 +166,7 @@ class sequence:
             for r in range(self.point_index[0], self.point_index[1]):
                 df = self.gradient_matrix[r]
                 A, B = freprecess.res(self.delta_t, self.T1, self.T2, df + self.w0)
-                self.data[self.point_index[0]:self.point_index[1], r] = self.data[self.point_index[0]:self.point_index[1], r] @ A.T + B
+                self.data[self.point_index[0]:self.point_index[1], r, :] = self.data[self.point_index[0]:self.point_index[1], r, :] @ A.T + B
             img_matrix = torch.complex(self.data[:, :, :, 0], self.data[:, :, :, 1]).to(device)
             sample = img_matrix.sum()
             self.kspace_img[num_rf, i] = - sample if num_rf % 2 == 0 else sample
@@ -192,16 +196,18 @@ class sequence:
 
         for l in range(self.point_index[0], self.point_index[1]):
             for r in range(self.point_index[0], self.point_index[1]):
+                for z in range(self.slice_thickness):
                 # if self.data[i][j][0][2] != 0:
-                df = self.gradient_matrix[l][r]
-                A, B = freprecess.res(self.tau_y, self.T1, self.T2, df + self.w0)
-                self.data[l][r] = self.data[l][r] @ A.T + B
+                    df = self.gradient_matrix[l][r]
+                    A, B = freprecess.res(self.tau_y, self.T1, self.T2, df + self.w0)
+                    self.data[l, r, z] = self.data[l, r, z] @ A.T + B
         
         time = self.TE - self.tau_x / 2 - self.tau_y
         A, B = freprecess.res(time, self.T1, self.T2, 0 + self.w0)
         for l in range(self.point_index[0], self.point_index[1]):
             for r in range(self.point_index[0], self.point_index[1]):
-                self.data[l][r] = self.data[l][r] @ A.T + B
+                for z in range(self.slice_thickness):
+                    self.data[l, r, z] = self.data[l, r, z] @ A.T + B
         
         plt.clf()
         self.alpha.append(np.angle(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu().numpy() + self.data[self.point_index[0], self.point_index[0], 0, 1].cpu().numpy()*1j) * 180 / np.pi)

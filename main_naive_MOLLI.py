@@ -152,7 +152,7 @@ def main():
     T1_res = []
     for T1 in T1_list:
         test_info = info(T1_generate=T1)
-        program = sequence.molli(test_info)
+        program = sequence.naive_molli(test_info)
         program.simulation()
         x = torch.Tensor(program.readout_time)
         param, param_cov = curve_fit(model, x.numpy(), program.readout_Mxy[:,0,0], p0=[0.5,1,T1], maxfev = 10000000)

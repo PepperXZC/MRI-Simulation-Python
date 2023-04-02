@@ -45,7 +45,7 @@ def relax(x, time, point_tensor, result, A, B, info, rest_time):
             x.append(x[-1] + info.dt)
     return x, point_tensor, result, accumu_t
 
-class molli:
+class naive_molli:
     def __init__(self, info) -> None:
         # self.point = torch.Tensor([0,0,1]).to(device).T # 初始化
         self.point = info.m0
