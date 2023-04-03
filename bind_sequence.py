@@ -14,7 +14,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # TODO：其它的都没问题，考虑蒙特卡洛扔质子。
 
 class bSSFP_MOLLI:
-    def __init__(self, info, data) -> None:
+    def __init__(self, info, data, point_index) -> None:
         self.m0 = info.m0
         self.time = 0   # 积累起来的时间
         self.each_time_flow = info.each_time # TODO：这里计算好：每过 each_time 时间就移动1个矩阵上的位置。
@@ -22,6 +22,7 @@ class bSSFP_MOLLI:
         self.vassel_width = info.bandwidth
         self.fov = info.fov
         self.HR = info.HR  # bpm
+        self.point_index = point_index
 
         self.TI_5 = info.TI_5
         self.TI_3 = info.TI_3
@@ -79,4 +80,6 @@ class bSSFP_MOLLI:
         # 5
         self.inversion_pulse()
         self.relax(self.TI_5_before)
-        img_plot = bssfp.sequence(self.info, self.data, (self.data.shape[0], self.data.shape[1]))
+        img_plot = bssfp.sequence(self.info, self.data, self.point_index, prep_num=1)
+        img = img_plot.read_sequence()
+        

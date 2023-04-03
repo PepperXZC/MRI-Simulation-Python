@@ -23,8 +23,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class info:
     def __init__(self, 
-        T1_generate = 900, 
-        T2 = 80, 
+        T1_generate = 2000, 
+        T2 = 200, 
         TR = 5,
         # TFE = 49,
         fa = 60,
@@ -77,10 +77,10 @@ class info:
         self.Gx = 1e3 / (self.gamma * self.delta_t * self.fov)
         self.delta_ky = 1 / (self.fov) #cm-1
         # self.k_max = 1 / (2 * self.delta)
-        self.ky_max = 0.5 * (self.N_pe - 1) * self.delta_ky
-        self.ky_list = [((self.N_pe - 1) / 2 - m) * self.delta_ky for m in np.arange(0, self.N_pe, 1)]
-        self.Gyp = self.ky_max * 1e3/ (self.gamma * self.tau_y)
-        self.Gyi = self.delta_ky * 1e3/ (self.gamma * self.tau_y)
+        self.ky_max = 0.5 * self.N_pe * self.delta_ky
+        # self.ky_list = [((self.N_pe - 1) / 2 - m) * self.delta_ky for m in np.arange(0, self.N_pe, 1)]
+        self.Gyp = self.ky_max * 1e3 / (self.gamma * self.tau_y)
+        self.Gyi = self.delta_ky * 1e3 / (self.gamma * self.tau_y)
         # self.Gx = Gx
         print("hi")
         
@@ -99,31 +99,34 @@ class info:
 if __name__ == "__main__":
     test_info = info()
     gamma = 4258
-    body = image.body(64, test_info.gamma)
+    body = image.body(64, 20, test_info.gamma)
 
     # 这是个范围
     # point_index = (body.length // 2, body.length // 2 + 1)
     # point_index = (body.lower, body.upper)
+
+    # 矩形
+    point_index = image.get_point_index(64, 20)
     
 
     # 单点时使用这个：
-    point_index = (32, 32 + 1)
+    # point_index = [(10, 10)]
     # point_index = [(i, j) for (i, j) in ]
     slice_thickness = 5
     slice_data = image.slice_select(body, 32, slice_thickness)
 
     # data = slice_data[point_index[0], point_index[1]]
     # slice_index = (slice_lower, slice_upper)
-    print(slice_data[point_index[0], point_index[0]])
+    # print(slice_data[point_index[0], point_index[0]])
     # print(gradient.get_Gx())
 
-    seq = bssfp.sequence(test_info, slice_data, point_index)
+    seq = bssfp.sequence(test_info, slice_data, point_index, 1)
     prep_num = 1
     fa_sequence, TR_sequence = bssfp.get_sequence_info(test_info, prep_num)
     
     # seq.RF(fa_sequence[0])
     # A, B = freprecess.res(TR_sequence[0], test_info.T1, test_info.T2, 0)
-    plt.ion()
+    # plt.ion()
     seq.prep_RF(fa_sequence, TR_sequence, prep_num)
     from tqdm import tqdm
     
@@ -135,8 +138,8 @@ if __name__ == "__main__":
         seq.phase_encoding(i)
         seq.readout_encoding(i)
         seq.rewind(i)
-        plt.pause(0.1)         # 暂停一秒
-        plt.ioff() 
+        # plt.pause(0.1)         # 暂停一秒
+        # plt.ioff() 
     seq.kspace_img = seq.kspace_img.cpu()
     plt.clf()
     torch.save(seq.kspace_img, 'kspace.pt')

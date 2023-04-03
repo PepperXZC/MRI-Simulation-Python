@@ -19,7 +19,8 @@ from PIL import Image
 mat = torch.load("E:\Study\毕业设计\MRI-simulation\kspace.pt").cpu()
 temp = abs(mat).numpy()
 plt.subplot(1,2,1)
-plt.imshow(temp, cmap=plt.cm.gray)
+# plt.imshow(temp, cmap=plt.cm.gray)
+plt.imshow(temp)
 # print(mat.shape)
 # import cv2
 # mat = torch.zeros((128, 128))
@@ -39,13 +40,14 @@ ft_mat = torch.fft.ifftshift(ft_mat)
 # ft_mat = torch.fft.fftshift(ft_mat)
 # # ft_mat = torch.fft.fftshift(mat)
 res = abs(ft_mat).numpy()
-res[10, 10] = 0
+# res[10, 10] = 0
 
 # print(res.shape)
 # lower, upper = length // 2 - 15, length//2 + 15
 # mat[lower:upper, :] = 0
 plt.subplot(1,2,2)
-plt.imshow(res, cmap=plt.cm.gray)
+# plt.imshow(res, cmap=plt.cm.gray)
+plt.imshow(res)
 # print(res)
 plt.show()
 
