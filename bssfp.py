@@ -27,7 +27,7 @@ def get_sequence_info(info, prep_num):
 
 class sequence:
     # def __init__(self, fa, TR, TFE, point_tensor, gradient, gamma, tau_y, fov, delta, delta_t) -> None:
-    def __init__(self, info, body_slice, point_index, prep_num) -> None:
+    def __init__(self, info, body_slice, li_vassel, li_muscle, prep_num) -> None:
         self.flip_angle = info.fa * math.pi / 180 # 假设读入60，为角度制。默认60x
         self.T1 = info.T1
         self.T2 = info.T2
@@ -51,7 +51,7 @@ class sequence:
         self.info = info
         self.prep_num = prep_num
 
-        self.point_index = point_index
+        self.li_vassel, self.li_muscle = li_vassel, li_muscle
         self.slice_thickness = body_slice.shape[2]
 
 
@@ -75,19 +75,28 @@ class sequence:
     
     def freeprecess(self, time, gradient=False):
         if gradient == False:
-            A, B = freprecess.res(time, self.T1, self.T2, 0 + self.w0)
+            A, B = freprecess.res(time, self.T1[0], self.T2[0], 0 + self.w0)
             # for l in range(self.point_index[0], self.point_index[1]):
             #     for r in range(self.point_index[0], self.point_index[1]):
             #         for z in range(self.slice_thickness):
             #             self.data[l, r, z] = self.data[l, r, z] @ A.T + B
-            for (i, j) in self.point_index:
+            for (i, j) in self.li_vassel:
+                self.data[i, j, :] = self.data[i, j, :] @ A.T + B
+            A, B = freprecess.res(time, self.T1[1], self.T2[1], 0 + self.w0)
+            for (i, j) in self.li_muscle:
                 self.data[i, j, :] = self.data[i, j, :] @ A.T + B
         else:
-            for (i, j) in self.point_index:
+            for (i, j) in self.li_vassel:
                     # for z in range(self.slice_thickness):
                         # self.data[l, r, z] = self.data[l, r, z] @ A.T + B
                 df = self.gradient_matrix[i, j] # TODO: 考虑时间的话，这个真的对吗？
-                A, B = freprecess.res(time, self.T1, self.T2, df + self.w0)
+                A, B = freprecess.res(time, self.T1[0], self.T2[0], df + self.w0)
+                self.data[i, j, :] = self.data[i, j, :] @ A.T + B
+            for (i, j) in self.li_muscle:
+                    # for z in range(self.slice_thickness):
+                        # self.data[l, r, z] = self.data[l, r, z] @ A.T + B
+                df = self.gradient_matrix[i, j] # TODO: 考虑时间的话，这个真的对吗？
+                A, B = freprecess.res(time, self.T1[1], self.T2[1], df + self.w0)
                 self.data[i, j, :] = self.data[i, j, :] @ A.T + B
         
     def RF(self, fa):
@@ -99,8 +108,8 @@ class sequence:
         self.freeprecess(time)
         # print(self.data[self.point_index[0]:self.point_index[1], self.point_index[0]:self.point_index[1]])
 
-        self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
-        self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
+        # self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
+        # self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
         # print(self.data[10, 10])
         # self.x = 0
         # self.alpha = []
@@ -111,12 +120,6 @@ class sequence:
             num = center + sign((num_rf - 1) % 2) * ((num_rf + 1) // 2)
             G_diff = (self.Gyp - num * self.Gyi) * self.gamma
             return G_diff * self.position_y, num
-            if num_rf % 2 == 0:
-                G_diff = (self.Gyp - (center - num) * self.Gyi) * self.gamma
-                return G_diff * self.position_y, center - num_rf // 2
-            else:
-                G_diff = (self.Gyp - (center + num) * self.Gyi) * self.gamma
-                return G_diff * self.position_y, center + num_rf // 2
         # 对于正的Gy，从高到低排列
 
     def prep_RF(self, fa_sequence, TR_sequence, prep_num):
@@ -174,9 +177,19 @@ class sequence:
         # temp_data = copy.deepcopy(self.data)
         for i in range(len(Gx_time)):
             now_time += self.delta_t
+            # vassel
             for r in range(lower, upper):
                 df = self.gradient_matrix[r]
-                A, B = freprecess.res(self.delta_t, self.T1, self.T2, df + self.w0)
+                A, B = freprecess.res(self.delta_t, self.T1[0], self.T2[0], df + self.w0)
+                self.data[x_min:x_max, r, :] = self.data[x_min:x_max, r, :] @ A.T + B
+            # muscle
+            for r in range(lower):
+                df = self.gradient_matrix[r]
+                A, B = freprecess.res(self.delta_t, self.T1[1], self.T2[1], df + self.w0)
+                self.data[x_min:x_max, r, :] = self.data[x_min:x_max, r, :] @ A.T + B
+            for r in range(upper, length):
+                df = self.gradient_matrix[r]
+                A, B = freprecess.res(self.delta_t, self.T1[1], self.T2[1], df + self.w0)
                 self.data[x_min:x_max, r, :] = self.data[x_min:x_max, r, :] @ A.T + B
             img_matrix = torch.complex(self.data[:, :, :, 0], self.data[:, :, :, 1]).to(device)
             sample = img_matrix.sum()
@@ -203,7 +216,7 @@ class sequence:
         self.freeprecess(time)
         # print(self.data[10, 10, 0])
 
-    def read_sequence(self):
+    def read_sequence(self, img_info:str):
         fa_sequence, TR_sequence = get_sequence_info(self.info, self.prep_num)
         self.prep_RF(fa_sequence, TR_sequence, self.prep_num)
         for i in tqdm(range(self.N_pe)):
@@ -211,7 +224,7 @@ class sequence:
             self.phase_encoding(i)
             self.readout_encoding(i)
             self.rewind(i)
-        torch.save(self.kspace_img, 'kspace.pt')
+        torch.save(self.kspace_img, 'kspace'+ img_info +'.pt')
         return self.kspace_img.cpu()
         # plt.xlim((-1, 1))
 

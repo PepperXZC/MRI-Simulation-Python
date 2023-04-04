@@ -15,7 +15,8 @@ class body:
         # 矩形
         a, b = int(length // 2), int(bandwidth // 2)
         self.lower, self.upper = a - b, a + b
-        self.data[:,self.lower:self.upper,:,2] = 1
+        # self.data[:,self.lower:self.upper,:,2] = 1
+        self.data[:,:,:,2] = 1
         # 单点
         # self.data[length//2,length//2,:,2] = 1
         # self.data[10, 10 ,:,2] = 1
@@ -27,12 +28,16 @@ def slice_select(body, z0, thickness):
 
 def get_point_index(length, bandwidth):
     # 矩形
-    li = []
+    # TODO：生成两个 point_index 集合
+    li_vassel, li_muscle = [], []
     a, b = int(length // 2), int(bandwidth // 2)
     lower, upper = a - b, a + b
     for i in range(length):
-        for j in range(lower, upper):
-            li.append((i, j))
-    return li
+        for j in range(length):
+            if j >= lower and j < upper:
+                li_vassel.append((i, j))
+            else:
+                li_muscle.append((i, j))
+    return li_vassel, li_muscle
 
     # return [(length//2,length//2)]

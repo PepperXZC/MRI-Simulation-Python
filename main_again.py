@@ -10,6 +10,7 @@ import gradient
 import numpy as np
 import bssfp
 import cv2
+import bind_sequence
 
 import random
 def randomcolor():
@@ -23,9 +24,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class info:
     def __init__(self, 
-        T1_generate = 2000, 
-        T2 = 200, 
+        T1_generate = [1400, 1000], # vassel, muscle
+        T2 = [50, 50], 
         TR = 5,
+        TI_5 = 120,
+        TI_3 = 300,
+        HR = 80,
         # TFE = 49,
         fa = 60,
         b0 = 1.5, # Tesla
@@ -45,6 +49,8 @@ class info:
 
         self.T1 = T1_generate # float64
         self.T2 = T2
+        self.TI_5 = TI_5
+        self.TI_3 = TI_3
         self.TE = TR / 2
         # self.TFE = TFE
         self.TR = TR
@@ -54,6 +60,7 @@ class info:
         
         self.b0 = b0
         self.fa = fa
+        self.HR = HR
         self.delta = delta
 
         self.w0 = self.gamma * 1e-4 * self.b0 # MHz
@@ -81,6 +88,7 @@ class info:
         # self.ky_list = [((self.N_pe - 1) / 2 - m) * self.delta_ky for m in np.arange(0, self.N_pe, 1)]
         self.Gyp = self.ky_max * 1e3 / (self.gamma * self.tau_y)
         self.Gyi = self.delta_ky * 1e3 / (self.gamma * self.tau_y)
+        self.m0 = torch.Tensor([0,0,1]).to(device).T
         # self.Gx = Gx
         print("hi")
         
@@ -95,32 +103,8 @@ class info:
         # self.Gyi = 1 / (self.gamma * self.fov * 1e-2  * self.tau_y * 1e-3) # G/cm
 
         
-
-if __name__ == "__main__":
-    test_info = info()
-    gamma = 4258
-    body = image.body(64, 20, test_info.gamma)
-
-    # 这是个范围
-    # point_index = (body.length // 2, body.length // 2 + 1)
-    # point_index = (body.lower, body.upper)
-
-    # 矩形
-    point_index = image.get_point_index(64, 20)
-    
-
-    # 单点时使用这个：
-    # point_index = [(10, 10)]
-    # point_index = [(i, j) for (i, j) in ]
-    slice_thickness = 5
-    slice_data = image.slice_select(body, 32, slice_thickness)
-
-    # data = slice_data[point_index[0], point_index[1]]
-    # slice_index = (slice_lower, slice_upper)
-    # print(slice_data[point_index[0], point_index[0]])
-    # print(gradient.get_Gx())
-
-    seq = bssfp.sequence(test_info, slice_data, point_index, 1)
+def test_plot(test_info, slice_data, li_vassel, li_muscle):
+    seq = bssfp.sequence(test_info, slice_data, li_vassel, li_muscle, 1)
     prep_num = 1
     fa_sequence, TR_sequence = bssfp.get_sequence_info(test_info, prep_num)
     
@@ -154,20 +138,38 @@ if __name__ == "__main__":
     plt.subplot(1,2,2)
     plt.imshow(res, cmap=plt.cm.gray)
     plt.show()
+
+
+if __name__ == "__main__":
+    test_info = info()
+    gamma = 4258
+    body = image.body(64, 20, test_info.gamma)
+
+    # 这是个范围
+    # point_index = (body.length // 2, body.length // 2 + 1)
+    # point_index = (body.lower, body.upper)
+
+    # 矩形
+    li_vassel, li_muscle = image.get_point_index(64, 20)
     
 
-    # test
-    # A, B = freprecess.res(10, 1000, 45, 20)
-    # m0 = torch.Tensor([0,0,1]).T
-    # m0 = m0 @ matrix_rot.xrot(60 * math.pi / 180).T
-    # m1 = m0 @ A.T + B
-    # print(m1)
-    # A, B = freprecess.res(20, 1000, 45, -20)
-    # m2 = m1 @ A.T + B
-    # print(m2)
-    # A, B = freprecess.res(10, 1000, 45, 20)
-    # m3 = m2 @ A.T + B
-    # print(m3)
+    # 单点时使用这个：
+    # point_index = [(10, 10)]
+    # point_index = [(i, j) for (i, j) in ]
+    # slice_thickness = 5
+    # slice_data = image.slice_select(body, 32, 5)
+    # test_plot(test_info, slice_data, li_vassel, li_muscle)
+
+    # data = slice_data[point_index[0], point_index[1]]
+    # slice_index = (slice_lower, slice_upper)
+    # print(slice_data[point_index[0], point_index[0]])
+    # print(gradient.get_Gx())
+
+    # test_plot(test_info, slice_data, point_index)
+
+    bS_molli = bind_sequence.bSSFP_MOLLI(test_info, body.data, li_vassel, li_muscle)
+    bS_molli.protocol()
+
 
     # cv2.imshow(res)
     # cv2.waitKey(0)
