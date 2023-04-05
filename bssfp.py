@@ -9,7 +9,8 @@ import image
 import copy
 from tqdm import tqdm
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 # 默认是 fa/2 - TR/2 prep
 def sign(num):
     if num > 0:
@@ -76,19 +77,14 @@ class sequence:
     def freeprecess(self, time, gradient=False):
         if gradient == False:
             A, B = freprecess.res(time, self.T1[0], self.T2[0], 0 + self.w0)
-            # for l in range(self.point_index[0], self.point_index[1]):
-            #     for r in range(self.point_index[0], self.point_index[1]):
-            #         for z in range(self.slice_thickness):
-            #             self.data[l, r, z] = self.data[l, r, z] @ A.T + B
             for (i, j) in self.li_vassel:
                 self.data[i, j, :] = self.data[i, j, :] @ A.T + B
             A, B = freprecess.res(time, self.T1[1], self.T2[1], 0 + self.w0)
             for (i, j) in self.li_muscle:
                 self.data[i, j, :] = self.data[i, j, :] @ A.T + B
+
         else:
             for (i, j) in self.li_vassel:
-                    # for z in range(self.slice_thickness):
-                        # self.data[l, r, z] = self.data[l, r, z] @ A.T + B
                 df = self.gradient_matrix[i, j] # TODO: 考虑时间的话，这个真的对吗？
                 A, B = freprecess.res(time, self.T1[0], self.T2[0], df + self.w0)
                 self.data[i, j, :] = self.data[i, j, :] @ A.T + B
@@ -216,7 +212,7 @@ class sequence:
         self.freeprecess(time)
         # print(self.data[10, 10, 0])
 
-    def read_sequence(self, img_info:str):
+    def read_sequence(self, save_path, img_info:str):
         fa_sequence, TR_sequence = get_sequence_info(self.info, self.prep_num)
         self.prep_RF(fa_sequence, TR_sequence, self.prep_num)
         for i in tqdm(range(self.N_pe)):
@@ -224,7 +220,7 @@ class sequence:
             self.phase_encoding(i)
             self.readout_encoding(i)
             self.rewind(i)
-        torch.save(self.kspace_img, 'kspace'+ img_info +'.pt')
+        torch.save(self.kspace_img, save_path + '\\kspace'+ img_info +'.pt')
         return self.kspace_img.cpu()
         # plt.xlim((-1, 1))
 

@@ -1,6 +1,13 @@
 #  打草稿 别在意
 import matplotlib.pyplot as plt
 import math
+import copy
+import numpy as np
+import torch
+from PIL import Image
+from scipy.optimize import curve_fit
+import main_again
+import image
 
 # ax = []                    # 定义一个 x 轴的空列表用来接收动态的数据
 # ay = []                    # 定义一个 y 轴的空列表用来接收动态的数据
@@ -13,48 +20,103 @@ import math
 # 	plt.pause(0.1)         # 暂停一秒
 # 	plt.ioff()             # 关闭画图的窗口
 
-import torch
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-from PIL import Image
-mat = torch.load("E:\Study\毕业设计\MRI-simulation\kspace.pt").cpu()
-temp = abs(mat).numpy()
-plt.subplot(1,2,1)
-# plt.imshow(temp, cmap=plt.cm.gray)
-plt.imshow(temp)
-# print(mat.shape)
-# import cv2
-# mat = torch.zeros((128, 128))
-# mat[64, 64] = 1
-# plt.imshow(mat, cmap=plt.cm.gray)
-length = 64
 
 
-ft_mat = torch.fft.ifft2(mat)
-ft_mat = torch.fft.ifftshift(ft_mat)
-# ft_mat = torch.fft.ifftshift(ft_mat)
-# ft_mat[10,10] = 0
-# ft_mat = torch.fft.fftshift(ft_mat)
-# ft_mat = torch.fft.fftshift(ft_mat)
+def plot_fft():
+    
+    mat = torch.load("E:\Study\毕业设计\MRI-simulation\kspaceTI5_0.pt").cpu()
+    temp = abs(mat).numpy()
+    plt.subplot(1,2,1)
+    # plt.imshow(temp, cmap=plt.cm.gray)
+    plt.imshow(temp)
+    length = 64
+    ft_mat = torch.fft.ifft2(mat)
+    ft_mat = torch.fft.ifftshift(ft_mat)
+    res = abs(ft_mat).numpy()
+    plt.subplot(1,2,2)
+    # plt.imshow(res, cmap=plt.cm.gray)
+    plt.imshow(res)
+    # print(res)
+    plt.show()
 
-# ft_mat[length // 2, length // 2] = 0
-# ft_mat = torch.fft.fftshift(ft_mat)
-# # ft_mat = torch.fft.fftshift(mat)
-res = abs(ft_mat).numpy()
-# res[10, 10] = 0
+def model(x, A, B, t1):
+    return A - B * np.exp(- x / t1)
 
-# print(res.shape)
-# lower, upper = length // 2 - 15, length//2 + 15
-# mat[lower:upper, :] = 0
-plt.subplot(1,2,2)
-# plt.imshow(res, cmap=plt.cm.gray)
-plt.imshow(res)
-# print(res)
-plt.show()
+def eight_imgs_data() -> np.ndarray:
+    x = torch.Tensor([ 118.6000,  318.6000,  939.4000, 1139.4000, 1760.2000, 1960.2000, 2581.0000, 3401.8000]).numpy()
+    name = 'E:\Study\毕业设计\MRI-simulation\(400+400j)\kspace'
+    li = []
+    for key in range(len([5, 3])):
+        if key == 0:
+            for i in range(5):
+                li.append(name + "TI5_" + str(i) + ".pt")
+        else:
+            for i in range(3):
+                li.append(name + "TI3_" + str(i) + ".pt")
+    data_li = []
+    j = 0
+    index = [0,5,1,6,2,7,3,4]
+    # for path in li:
+    for i in index:
+        data = torch.load(li[i]).cpu()
+        print(li[i])
+        ft_mat = torch.fft.ifft2(data)
+        ft_mat = torch.fft.ifftshift(ft_mat)
+        plt.subplot(2, 4, j + 1)
+        plt.imshow(ft_mat.abs().numpy())
+        # print(ft_mat)
+        j += 1
+        data_li.append(ft_mat.abs().numpy())
+    data_list = np.array(data_li)
+    plt.show()
+    return x, data_list
+
+def fit_8():
+    
+    x, data_list = eight_imgs_data()
+    # plt.scatter(x, y)
+
+    test_info = main_again.info()
+    li_vassel, li_muscle = image.get_point_index(test_info.length, test_info.bandwidth)
+    accuracy_vassel, accuracy_muscle = [], []
+    for (i, j) in li_vassel:
+        y = copy.deepcopy(data_list[:, i, j])
+        y[0] *= -1
+        y[1] *= -1
+        param, param_cov = curve_fit(model, x, y, p0=[0.5,1,test_info.T1[0]], maxfev = int(1e8))
+        res = param[2] * (param[1] / param[0] - 1)
+        T1 = test_info.T1[0]
+        accuracy = 1e2 * (res - T1) / T1
+        accuracy_vassel.append(accuracy)
+    for (i, j) in li_muscle:
+        y = copy.deepcopy(data_list[:, i, j])
+        y[0] *= -1
+        y[1] *= -1
+        param, param_cov = curve_fit(model, x, y, p0=[0.5,1,test_info.T1[1]], maxfev = int(1e8))
+        res = param[2] * (param[1] / param[0] - 1)
+        T1 = test_info.T1[1]
+        accuracy = 1e2 * (res - T1) / T1
+        accuracy_muscle.append(accuracy)
+    # print(param[0], param[1], param[2], res, accuracy)
+    print(np.array(accuracy_vassel).mean(), np.array(accuracy_muscle).mean())
+    # x_temp = np.arange(x.min(), x.max(), 1)
+    # y = model(x_temp, param[0], param[1], param[2])
+    # plt.plot(x_temp, y)
+    # plt.show()
+
+def T1_contrast():
+    data_list = eight_imgs_data()
 
 
-# img = Image.fromarray(res)
-# img = img.convert("L")
-# img.show()
+fit_8()
+
+
+
+
+
+
 
 
 y = torch.Tensor([-0.7816, -0.6536,  0.2293,  0.2763,  0.5942,  0.6116,  0.7318,  0.7828])

@@ -1,7 +1,8 @@
 import torch
 import math
 import matrix_rot
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 # 这里 t 是一个数，不是矩阵
 def res(t, T1, T2, df):

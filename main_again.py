@@ -20,18 +20,23 @@ def randomcolor():
         color += colorArr[random.randint(0,14)]
     return "#"+color
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 class info:
     def __init__(self, 
-        T1_generate = [1400, 1000], # vassel, muscle
+        T1_generate = [800, 600], # vassel, muscle
         T2 = [50, 50], 
-        TR = 5,
+        TR = 2.8,
         TI_5 = 120,
-        TI_3 = 300,
-        HR = 80,
+        TI_3 = 320,
+        HR = 60,
         # TFE = 49,
-        fa = 60,
+        fa = 30,
+        z0 = 32,
+        bandwidth = 20,
+        index_list = [0,5,1,6,2,7,3,4],
+        thickness = 5,
         b0 = 1.5, # Tesla
         # tau_x = 1.0, # 原本应该是 receiver bandwidth， 但因为序列设计
         receiver_bandwidth = 83.3, # khz
@@ -56,6 +61,9 @@ class info:
         self.TR = TR
         self.fov = fov
         self.gamma = gamma
+        self.index_list = index_list
+        self.z0 = z0
+        self.thickness = thickness
         # self.Gx = Gx
         
         self.b0 = b0
@@ -69,7 +77,10 @@ class info:
 
         self.delta_k = 1 / (self.fov)
 
-        self.BW = receiver_bandwidth # khz
+        self.length = self.N_pe
+        self.bandwidth = bandwidth
+
+        # self.BW = receiver_bandwidth # khz
         # self.delta_t = self.tau_x / self.N_read
         # self.delta_t = 1 / (2 * self.BW) # sampling period, ms
         # self.tau_x = self.N_read * self.delta_t
@@ -150,7 +161,7 @@ if __name__ == "__main__":
     # point_index = (body.lower, body.upper)
 
     # 矩形
-    li_vassel, li_muscle = image.get_point_index(64, 20)
+    li_vassel, li_muscle = image.get_point_index(test_info.length, test_info.bandwidth)
     
 
     # 单点时使用这个：

@@ -1,7 +1,8 @@
 import math
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 # 默认 x 为单个列向量
 # math.sin(math.pi) = 1.2246467991473532e-16

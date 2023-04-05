@@ -148,7 +148,8 @@ def main():
     #     for j in range(test_info.pool_length):
     #     # for j in range(test_info.bandwidth):
     #         plt.clf()
-    T1_list = torch.arange(100, 1500, 200)
+    # T1_list = torch.arange(100, 1500, 200)
+    T1_list = [1000]
     T1_res = []
     for T1 in T1_list:
         test_info = info(T1_generate=T1)

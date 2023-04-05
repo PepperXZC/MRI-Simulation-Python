@@ -82,7 +82,7 @@ class naive_molli:
         self.readout_time = []
         # 血池
         # self.res_pool_tensor = torch.zeros(size=(len(self.N_TI_5) + len(self.N_TI_3), self.info.fov, self.info.fov, len(self.m0)))
-        self.pool_tensor = torch.zeros(size=self.pool_size)
+        self.pool_tensor = torch.zeros(size=self.pool_size).to(device)
         # 默认 m0 = [0,0,1]
         self.pool_tensor[:,:,2] = 1
         self.each_time = self.info.real_length / self.info.roll_rate
@@ -216,6 +216,7 @@ class naive_molli:
         self.readout_Mxy = self.readout_Mxy[self.info.readout_index]
         self.readout_Mz = self.readout_Mz[self.info.readout_index]
         self.readout_time = torch.Tensor(self.readout_time)[self.info.readout_index]
+        print("hi")
         # self.readout_Mz = torch.Tensor(self.readout_Mz)
                 
         
