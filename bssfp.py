@@ -220,7 +220,8 @@ class sequence:
             self.phase_encoding(i)
             self.readout_encoding(i)
             self.rewind(i)
-        torch.save(self.kspace_img, save_path + '\\kspace'+ img_info +'.pt')
+        print(save_path + '/kspace'+ img_info +'.pt')
+        torch.save(self.kspace_img, save_path + '/kspace'+ img_info +'.pt')
         return self.kspace_img.cpu()
         # plt.xlim((-1, 1))
 

@@ -26,7 +26,7 @@ for i in range(len(T1_vassel)):
         info = main_again.info(T1_generate=T1)
         body = image.body(info.length, info.bandwidth, info.gamma)
         li_vassel, li_muscle = image.get_point_index(info.length, info.bandwidth)
-        path = str(T1_vassel[i] + T1_muscle[j] * 1j)
+        path = str(T1_vassel[i]) + "and" + str(T1_muscle[j])
         if not os.path.exists(path):
             os.makedirs(path)
         bS_molli = bind_sequence.bSSFP_MOLLI(info, body.data, li_vassel, li_muscle, save_path=path)
