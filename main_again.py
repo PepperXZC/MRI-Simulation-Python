@@ -41,6 +41,7 @@ class info:
         # tau_x = 1.0, # 原本应该是 receiver bandwidth， 但因为序列设计
         receiver_bandwidth = 83.3, # khz
         gamma = 4258, # Hz / G
+        flow_speed = 20, # cm/s
         delta = 0.1, # spatial resolution delta
         fov = 6.4,  # cm
         # tau_y = 0.29
@@ -70,6 +71,9 @@ class info:
         self.fa = fa
         self.HR = HR
         self.delta = delta
+
+        self.flow_speed = flow_speed
+        self.each_time_flow = self.delta / (self.flow_speed * 1e-3) # TODO: 根据 flow_speed 算出 each_time：相隔多少毫秒，让 flow_speed 表示为每移动1格需要的时间 (ms)
 
         self.w0 = self.gamma * 1e-4 * self.b0 # MHz
         self.N_pe = int(self.fov / self.delta)
@@ -101,7 +105,7 @@ class info:
         self.Gyi = self.delta_ky * 1e3 / (self.gamma * self.tau_y)
         self.m0 = torch.Tensor([0,0,1]).to(device).T
         # self.Gx = Gx
-        print("hi")
+        # print("hi")
         
         # self.tau_x = tau_x
         
@@ -178,7 +182,7 @@ if __name__ == "__main__":
 
     # test_plot(test_info, slice_data, point_index)
 
-    bS_molli = bind_sequence.bSSFP_MOLLI(test_info, body.data, li_vassel, li_muscle)
+    bS_molli = bind_sequence.bSSFP_MOLLI(test_info, body.data, li_vassel, li_muscle, save_path="")
     bS_molli.protocol()
 
 

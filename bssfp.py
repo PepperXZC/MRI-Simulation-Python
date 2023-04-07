@@ -28,7 +28,7 @@ def get_sequence_info(info, prep_num):
 
 class sequence:
     # def __init__(self, fa, TR, TFE, point_tensor, gradient, gamma, tau_y, fov, delta, delta_t) -> None:
-    def __init__(self, info, body_slice, li_vassel, li_muscle, prep_num) -> None:
+    def __init__(self, info, body_slice, li_vassel, li_muscle, prep_num, flow, time) -> None:
         self.flip_angle = info.fa * math.pi / 180 # 假设读入60，为角度制。默认60x
         self.T1 = info.T1
         self.T2 = info.T2
@@ -48,9 +48,17 @@ class sequence:
         self.delta = info.delta
         self.tau_x = info.tau_x
         self.tau_y = info.tau_y
+        self.flow = flow
+        if self.flow == True:
+            self.time = time
         self.delta_t = info.delta_t
         self.info = info
         self.prep_num = prep_num
+
+        self.bandwidth = info.bandwidth
+        
+        self.flow_speed = info.flow_speed if info.flow_speed != None else None
+        self.each_time_flow = info.each_time_flow
 
         self.li_vassel, self.li_muscle = li_vassel, li_muscle
         self.slice_thickness = body_slice.shape[2]
@@ -73,6 +81,34 @@ class sequence:
         self.temp_z = []
         self.alpha = []
         self.x = 0
+    
+    def flow_vassel(self):
+        center_index = (self.fov / self.delta) // 2
+        lower, upper = int(center_index - self.bandwidth // 2), int(center_index + self.bandwidth // 2)
+        vassel = copy.deepcopy(self.data[:, lower:(upper+1), :])
+        vassel = torch.roll(vassel, 1, 0)
+        # for i in range(len(vassel[0])):
+            # 初始化
+        vassel[0, :, :, 2] = 1
+        vassel[0, :, :, 1] = 0
+        vassel[0, :, :, 0] = 0
+        self.data[:, lower:(upper+1)] = vassel
+
+    def free_flow(self, time, gradient=False):
+        if self.flow == True:
+            flow_num = int((self.time + time) // self.each_time_flow)
+        # before_time = self.each_time_flow - self.time
+            if (self.time + time) % self.each_time_flow == (self.time + time):
+                rest_time = time
+                self.time += time
+            else:
+                rest_time = (self.time + time) % self.each_time_flow
+                self.time = rest_time
+            for n in range(flow_num):
+                t = self.each_time_flow - self.time if n == 0 else self.each_time_flow
+                self.freeprecess(t, gradient)
+                self.flow_vassel()
+            self.freeprecess(rest_time, gradient)
     
     def freeprecess(self, time, gradient=False):
         if gradient == False:
@@ -102,13 +138,6 @@ class sequence:
         self.data = self.data @ Rflip.T
         time = self.TE - self.tau_x / 2 - self.tau_y
         self.freeprecess(time)
-        # print(self.data[self.point_index[0]:self.point_index[1], self.point_index[0]:self.point_index[1]])
-
-        # self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
-        # self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
-        # print(self.data[10, 10])
-        # self.x = 0
-        # self.alpha = []
     
     def get_Gy_tensor(self, num_rf):
         if self.N_pe % 2 == 0: # center 线是不可能没有的。。
@@ -125,7 +154,7 @@ class sequence:
             Rflip = matrix_rot.xrot(fa * math.pi / 180).to(device)
             self.data = self.data @ Rflip.T
             TR = TR_sequence[i]
-            self.freeprecess(TR)
+            self.free_flow(TR)
             # self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
             # # print(self.data[0, 0, 0, 1])
             # self.temp_z.append(self.data[self.point_index[0], self.point_index[0], 0, 1].cpu())
@@ -149,13 +178,28 @@ class sequence:
         self.gradient_matrix = self.gradient_matrix.to(device)
         assert self.gradient_matrix[32, 32] == 0
         # self.temp_x, self.temp_z = [], []
-        self.freeprecess(self.tau_y, gradient=True)
+        self.free_flow(self.tau_y, gradient=True)
                 # self.temp_x.append(self.data[l, r, 0, 0].cpu())
                 #     # print(self.data[0, 0, 0, 1])
                 # self.temp_z.append(self.data[l, r, 0, 1].cpu())
         # plt.clf()   # 暂停一秒
         # plt.ioff()
         
+    def readout_relax(self, time, lower, upper, length):
+        # 仅针对竖直方向血管
+        for r in range(lower, upper):
+            df = self.gradient_matrix[r]
+            A, B = freprecess.res(time, self.T1[0], self.T2[0], df + self.w0)
+            self.data[:, r, :] = self.data[:, r, :] @ A.T + B
+        # muscle
+        for r in range(lower):
+            df = self.gradient_matrix[r]
+            A, B = freprecess.res(time, self.T1[1], self.T2[1], df + self.w0)
+            self.data[:, r, :] = self.data[:, r, :] @ A.T + B
+        for r in range(upper, length):
+            df = self.gradient_matrix[r]
+            A, B = freprecess.res(time, self.T1[1], self.T2[1], df + self.w0)
+            self.data[:, r, :] = self.data[:, r, :] @ A.T + B
 
     def readout_encoding(self, num_rf):
         # exp_y = torch.asarray([cmath.exp(-1 * 2j*math.pi*ky*y[0]) for y in self.position_y]).reshape(-1, 1).to(device)
@@ -172,21 +216,22 @@ class sequence:
         now_time = 0
         # temp_data = copy.deepcopy(self.data)
         for i in range(len(Gx_time)):
-            now_time += self.delta_t
+            time = self.delta_t
+            flow_num = int((self.time + time) // self.each_time_flow)
+        # before_time = self.each_time_flow - self.time
+            if (self.time + time) % self.each_time_flow == (self.time + time):
+                rest_time = time
+                self.time += time
+            else:
+                rest_time = (self.time + time) % self.each_time_flow
+                self.time = rest_time
+            for n in range(flow_num):
+                t = self.each_time_flow - self.time if n == 0 else self.each_time_flow
+                self.readout_relax(t, lower, upper, length)
+            self.readout_relax(rest_time, lower, upper, length)
+
             # vassel
-            for r in range(lower, upper):
-                df = self.gradient_matrix[r]
-                A, B = freprecess.res(self.delta_t, self.T1[0], self.T2[0], df + self.w0)
-                self.data[x_min:x_max, r, :] = self.data[x_min:x_max, r, :] @ A.T + B
-            # muscle
-            for r in range(lower):
-                df = self.gradient_matrix[r]
-                A, B = freprecess.res(self.delta_t, self.T1[1], self.T2[1], df + self.w0)
-                self.data[x_min:x_max, r, :] = self.data[x_min:x_max, r, :] @ A.T + B
-            for r in range(upper, length):
-                df = self.gradient_matrix[r]
-                A, B = freprecess.res(self.delta_t, self.T1[1], self.T2[1], df + self.w0)
-                self.data[x_min:x_max, r, :] = self.data[x_min:x_max, r, :] @ A.T + B
+            
             img_matrix = torch.complex(self.data[:, :, :, 0], self.data[:, :, :, 1]).to(device)
             sample = img_matrix.sum()
             # self.kspace_img[num_rf, i] = - sample if num_rf % 2 == 0 else sample
@@ -206,10 +251,10 @@ class sequence:
         # self.gradient_matrix *= self.tau_y
         self.gradient_matrix = self.gradient_matrix.to(device)
 
-        self.freeprecess(self.tau_y, gradient=True)
+        self.free_flow(self.tau_y, gradient=True)
         
         time = self.TE - self.tau_x / 2 - self.tau_y
-        self.freeprecess(time)
+        self.free_flow(time)
         # print(self.data[10, 10, 0])
 
     def read_sequence(self, save_path, img_info:str):
@@ -220,8 +265,8 @@ class sequence:
             self.phase_encoding(i)
             self.readout_encoding(i)
             self.rewind(i)
-        print(save_path + '/kspace'+ img_info +'.pt')
-        torch.save(self.kspace_img, save_path + '/kspace'+ img_info +'.pt')
+        print(save_path + '\\kspace'+ img_info +'.pt')
+        torch.save(self.kspace_img, save_path + '\\kspace'+ img_info +'.pt')
         return self.kspace_img.cpu()
         # plt.xlim((-1, 1))
 
