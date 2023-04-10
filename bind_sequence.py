@@ -60,14 +60,14 @@ class bSSFP_MOLLI:
         center_index = (self.fov / self.delta) // 2
         lower, upper = int(center_index - self.bandwidth // 2), int(center_index + self.bandwidth // 2)
         # print(lower, upper)
-        vassel = copy.deepcopy(self.data[:, lower:(upper+1), :])
+        vassel = copy.deepcopy(self.data[:, lower:upper, :])
         vassel = torch.roll(vassel, 1, 0)
         # for i in range(len(vassel[0])):
             # 初始化
         vassel[0, :, :, 2] = 1
         vassel[0, :, :, 1] = 0
         vassel[0, :, :, 0] = 0
-        self.data[:, lower:(upper+1)] = vassel
+        self.data[:, lower:upper] = vassel
         # self.time -= self.each_time_flow
     
     # 考虑在读取的过程中已经将x-y矢量打掉。

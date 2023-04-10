@@ -51,7 +51,8 @@ def eight_imgs_data(T1) -> np.ndarray:
     # name = 'E:\Study\毕业设计\MRI-simulation\(1100+1200j)\kspace'
 
     # name = 'E:\Study\毕业设计\MRI-simulation\data\(' + str(T1[0]) + '+' + str(T1[1]) + 'j)\\kspace'
-    name = 'E:\\Study\\flow_result\\' + str(T1[0]) + 'and' + str(T1[1]) + '\\kspace'
+    # name = 'E:\\Study\\flow_result\\' + str(T1[0]) + 'and' + str(T1[1]) + '\\kspace'
+    name = 'E:\\kspace'
     li = []
     for key in range(len([5, 3])):
         if key == 0:
@@ -71,7 +72,7 @@ def eight_imgs_data(T1) -> np.ndarray:
         ft_mat = torch.fft.ifftshift(ft_mat)
         plt.subplot(2, 4, j + 1)
         plt.imshow(ft_mat.abs().numpy())
-        print(ft_mat)
+        # print(ft_mat)
         j += 1
         data_li.append(ft_mat.abs().numpy())
     data_list = np.array(data_li)
@@ -81,11 +82,11 @@ def eight_imgs_data(T1) -> np.ndarray:
 def fit_one(T1_info):
     test_info = main_again.info(T1_generate=T1_info)
     x, data_list = eight_imgs_data(T1_info)
-    if (T1_info[0] == T1_info[1]):
-        for p in range(len(data_list)):
-            plt.subplot(2, 4, p + 1)
-            plt.imshow(data_list[p])
-        plt.show()
+    # if (T1_info[0] == T1_info[1]):
+    #     for p in range(len(data_list)):
+    #         plt.subplot(2, 4, p + 1)
+    #         plt.imshow(data_list[p])
+    #     plt.show()
     li_vassel, li_muscle = image.get_point_index(test_info.length, test_info.bandwidth)
     accuracy_vassel, accuracy_muscle = [], []
     res_vassel, res_muscle = [], []
@@ -122,7 +123,7 @@ def fit_8():
     # data = np.zeros((len(T1_vassel), len(T1_muscle)))
     # data = np.array([ 1 + 1j for _ in range(len(T1_vassel) * len(T1_vassel))]).reshape((len(T1_vassel), len(T1_muscle)))
     for m in range(len(T1_muscle)):
-        path = "E:\\Study\\static_result\\" + str(T1_vassel[m]) + ".csv"
+        path = "E:\\Study\\flow_result\\" + str(T1_vassel[m]) + ".csv"
         # vassel muscle accuracy_vassel accuracy_muscle
         # 固定 muscle 对不同 vassel
         zeros = np.zeros((6, len(T1_vassel)))
@@ -140,7 +141,7 @@ def fit_8():
             zeros[3, v] = np.array(res_muscle).mean()
             zeros[4, v] = np.array(accuracy_muscle).mean()
             zeros[5, v] = np.array(res_muscle).std()
-        df = pd.DataFrame(zeros, columns=T1_muscle, index=['vassel', 'accuracy_vassel','std_vassel', 'accuracy_muscle', 'muscle', 'std_muscle'])
+        df = pd.DataFrame(zeros, columns=T1_muscle, index=['vassel', 'accuracy_vassel','std_vassel', 'muscle', 'accuracy_muscle', 'std_muscle'])
         print(df)
         df.to_csv(path)
             
@@ -157,7 +158,7 @@ def T1_contrast():
 
 
 # fit_8()
-res_vassel, res_muscle, accuracy_vassel, accuracy_muscle = fit_one([1000, 600])
+res_vassel, res_muscle, accuracy_vassel, accuracy_muscle = fit_one([800, 600])
 print(np.array(res_vassel).mean(), np.array(accuracy_vassel).mean(), np.array(res_vassel).std())
 print(np.array(res_muscle).mean(), np.array(accuracy_muscle).mean(), np.array(res_muscle).std())
 

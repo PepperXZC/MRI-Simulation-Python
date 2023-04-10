@@ -85,14 +85,14 @@ class sequence:
     def flow_vassel(self):
         center_index = (self.fov / self.delta) // 2
         lower, upper = int(center_index - self.bandwidth // 2), int(center_index + self.bandwidth // 2)
-        vassel = copy.deepcopy(self.data[:, lower:(upper+1), :])
+        vassel = copy.deepcopy(self.data[:, lower:upper, :])
         vassel = torch.roll(vassel, 1, 0)
         # for i in range(len(vassel[0])):
             # 初始化
         vassel[0, :, :, 2] = 1
         vassel[0, :, :, 1] = 0
         vassel[0, :, :, 0] = 0
-        self.data[:, lower:(upper+1)] = vassel
+        self.data[:, lower:upper] = vassel
 
     def free_flow(self, time, gradient=False):
         if self.flow == True:
