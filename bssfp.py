@@ -92,7 +92,7 @@ class sequence:
         vassel[0, :, :, 2] = 1
         vassel[0, :, :, 1] = 0
         vassel[0, :, :, 0] = 0
-        self.data[:, lower:upper] = vassel
+        self.data[:, lower:upper, :, :] = vassel
 
     def free_flow(self, time, gradient=False):
         if self.flow == True:
@@ -213,22 +213,27 @@ class sequence:
         lower, upper = a - b, a + b
 
         # 单点读取：
-        now_time = 0
         # temp_data = copy.deepcopy(self.data)
         for i in range(len(Gx_time)):
             time = self.delta_t
             flow_num = int((self.time + time) // self.each_time_flow)
+            flow = 0
         # before_time = self.each_time_flow - self.time
             if (self.time + time) % self.each_time_flow == (self.time + time):
                 rest_time = time
                 self.time += time
             else:
+                flow = 1
                 rest_time = (self.time + time) % self.each_time_flow
                 self.time = rest_time
-            for n in range(flow_num):
-                t = self.each_time_flow - self.time if n == 0 else self.each_time_flow
-                self.readout_relax(t, lower, upper, length)
-            self.readout_relax(rest_time, lower, upper, length)
+            # for n in range(flow_num):
+            #     t = self.each_time_flow - self.time if n == 0 else self.each_time_flow
+            #     self.readout_relax(t, lower, upper, length)
+            #     self.flow_vassel()
+            self.readout_relax(time, lower, upper, length)
+            if flow == 1:
+                self.flow_vassel()
+
 
             # vassel
             

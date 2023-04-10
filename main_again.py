@@ -25,7 +25,7 @@ device = "cpu"
 
 class info:
     def __init__(self, 
-        T1_generate = [800, 600], # vassel, muscle
+        T1_generate = [1500, 1000], # vassel, muscle
         T2 = [50, 50], 
         TR = 2.8,
         TI_5 = 120,
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     bS_molli = bind_sequence.bSSFP_MOLLI(test_info, body.data, li_vassel, li_muscle, save_path="")
     bS_molli.protocol()
 
-
+    
     # cv2.imshow(res)
     # cv2.waitKey(0)
     # print("?")
