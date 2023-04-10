@@ -10,8 +10,8 @@ from scipy.optimize import curve_fit
 
 device = 'cpu'
 
-T1_muscle = np.arange(400, 1800, 100)
-T1_vassel = np.arange(400, 1800, 100)
+T1_muscle = np.arange(400, 1800, 200)
+T1_vassel = np.arange(400, 1800, 200)
 # data = np.zeros((len(T1_vassel), len(T1_muscle)))
 data = np.array([ 1 + 1j for _ in range(len(T1_vassel) * len(T1_vassel))]).reshape((len(T1_vassel), len(T1_muscle)))
 df = pd.DataFrame(data, columns=T1_muscle, index=T1_vassel)

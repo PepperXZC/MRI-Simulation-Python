@@ -40,6 +40,7 @@ def plot_fft():
     plt.subplot(1,2,2)
     # plt.imshow(res, cmap=plt.cm.gray)
     plt.imshow(res)
+    plt.colorbar()
     # print(res)
     plt.show()
 
@@ -72,10 +73,12 @@ def eight_imgs_data(T1) -> np.ndarray:
         ft_mat = torch.fft.ifftshift(ft_mat)
         plt.subplot(2, 4, j + 1)
         plt.imshow(ft_mat.abs().numpy())
+        plt.colorbar()
         # print(ft_mat)
         j += 1
         data_li.append(ft_mat.abs().numpy())
     data_list = np.array(data_li)
+    
     plt.show()
     return x, data_list
 

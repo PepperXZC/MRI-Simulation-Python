@@ -94,7 +94,7 @@ class sequence:
         vassel[0, :, :, 0] = 0
         self.data[:, lower:upper, :, :] = vassel
 
-    def free_flow(self, time, gradient=False):
+    def free_flow(self, time, gradient=False): # 用于 tau_y 或者 TR
         if self.flow == True:
             flow_num = int((self.time + time) // self.each_time_flow)
         # before_time = self.each_time_flow - self.time
