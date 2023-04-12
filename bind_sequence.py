@@ -8,6 +8,8 @@ import bssfp
 import matrix_rot
 import image
 from scipy.optimize import curve_fit
+import flowpool
+import new_proton
 
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = "cpu"
@@ -17,17 +19,18 @@ device = "cpu"
 # TODO：其它的都没问题，考虑蒙特卡洛扔质子。
 
 class bSSFP_MOLLI:
-    def __init__(self, info, data, li_vassel, li_muscle, save_path) -> None:
+    def __init__(self, info, data, index_list, save_path) -> None:
         self.m0 = info.m0
-        self.time = 0   # 积累起来的时间
+        self.time = 0   # frep和etf的差
         self.each_time_flow = info.each_time_flow # TODO：这里计算好：每过 each_time 时间就移动1个矩阵上的位置。
         self.data = data.to(device)  # (fov, fov, fov, 3)
         # self.vassel_width = info.bandwidth
         self.fov = info.fov
         self.delta = info.delta
         self.HR = info.HR  # bpm
-        self.li_vassel = li_vassel
-        self.li_muscle = li_muscle
+        # self.li_vassel = li_vassel
+        # self.li_muscle = li_muscle
+        self.index_list = index_list
         self.bandwidth = info.bandwidth
 
         self.TI_5 = info.TI_5
@@ -51,59 +54,15 @@ class bSSFP_MOLLI:
         self.info = info
 
         self.readout_time = []
+        self.flow_time = 1
+        
     
     def get_FA(self, prep_num):
         self.prep_num = prep_num
         self.fa_sequence, self.TR_sequence = bssfp.get_sequence_info(self.info, self.prep_num)
-        
-    def flow(self):
-        center_index = (self.fov / self.delta) // 2
-        lower, upper = int(center_index - self.bandwidth // 2), int(center_index + self.bandwidth // 2)
-        # print(lower, upper)
-        vassel = copy.deepcopy(self.data[:, lower:upper, :])
-        vassel = torch.roll(vassel, 1, 0)
-        # for i in range(len(vassel[0])):
-            # 初始化
-        vassel[0, :, :, 2] = 1
-        vassel[0, :, :, 1] = 0
-        vassel[0, :, :, 0] = 0
-        self.data[:, lower:upper] = vassel
-        # self.time -= self.each_time_flow
-    
-    # 考虑在读取的过程中已经将x-y矢量打掉。
-    # 在a/2 - T/R的收尾，可以考虑最后打一个 -a/2
-    def relax(self, time):
-        flow_num = int((self.time + time) // self.each_time_flow)
-        # before_time = self.each_time_flow - self.time
-        if (self.time + time) % self.each_time_flow == (self.time + time):
-            rest_time = time
-            self.time += time
-        else:
-            rest_time = (self.time + time) % self.each_time_flow
-            self.time = rest_time
-
-        for n in range(flow_num):
-            t = self.each_time_flow - self.time if n == 0 else self.each_time_flow
-            A, B = freprecess.res(t, self.T1[0], self.T2[0], 0)
-            for (i, j) in self.li_vassel:
-                self.data[i, j, :] = self.data[i, j, :] @ A.T + B
-            A, B = freprecess.res(t, self.T1[1], self.T2[1], 0)
-            for (i, j) in self.li_muscle:
-                self.data[i, j, :] = self.data[i, j, :] @ A.T + B
-            self.flow()
-
-        A, B = freprecess.res(rest_time, self.T1[0], self.T2[0], 0)
-        for (i, j) in self.li_vassel:
-            self.data[i, j, :] = self.data[i, j, :] @ A.T + B
-        A, B = freprecess.res(rest_time, self.T1[1], self.T2[1], 0)
-        for (i, j) in self.li_muscle:
-            self.data[i, j, :] = self.data[i, j, :] @ A.T + B
-        
     
     def get_time(self):
         ms_per_beat = 60 * 1e3 / self.HR
-        # self.TI_5_list = [self.TI_5 + i * ms_per_beat for i in range(strategy[0])]
-        # self.TI_3_list = [self.TI_3 + i * ms_per_beat for i in range(strategy[2])]
         self.TR_time = self.TR * (self.N_pe + 0.5 + self.prep_num - 1) # 读取 整整一张图 的时间
         # self.before_lines = (info.N_pe  // 2 - 1) if info.N_pe % 2 == 0 else (info.N_pe  // 2)
         self.before_lines = self.prep_num - 1 # 第一根线就是中心线
@@ -120,6 +79,7 @@ class bSSFP_MOLLI:
     def inversion_pulse(self):
         # for (i, j) in self.li_vassel + self.li_muscle:
         self.data = self.data @ self.Rflip_180.T # 现在所有点都有数据
+        self.frame_proton.record(FA=180)
     
     def plot(self):
         for index in range(len(self.img_list)):
@@ -136,45 +96,83 @@ class bSSFP_MOLLI:
         self.get_time()
         self.img_list = []
         self.data = image.slice_select(self.data, self.z0, self.thickness)
-
+        self.slice_thickness = self.data.shape[2]
         
+        init_tensor = torch.zeros((1, self.bandwidth, self.slice_thickness, 3)).to(device)
+        init_tensor[:, :, :, 2] = 1
+        self.frame_proton = new_proton.NewProton(self.info, self.data, device, init_tensor)
         for i in range(len(self.before_time)):
             time = 0
             self.inversion_pulse()
-            print(self.data[10, 32, 0])
+            # print(self.data[10, 32, 0])
 
-            self.relax(self.before_time[i])
+            # self.relax(self.before_time[i])
+            self.data, self.time = \
+                flowpool.free_flow(
+                    data=self.data, time=self.before_time[i], info=self.info, time_before=self.time, 
+                    flow_time=self.flow_time, frame_prot=self.frame_proton, flow=False,
+                    etf=self.each_time_flow, index_list=self.index_list
+                )
             time += self.before_time[i]
 
-            print(self.data[10, 32, 0])
+            # print(self.data[10, 32, 0])
             if i == 0: # 表示 TI_5
                 for j in range(5):
                     # 开销时间：(num_N_pe + 0.5) * TR
                     time += self.center_line_time
                     self.readout_time.append(time)
-                    img_plot = bssfp.sequence(self.info, self.data, self.li_vassel, self.li_muscle, prep_num=1,flow=True, time=self.time)
+                    # 只有在读取的时候才考虑 proton， interval 之间不考虑
+                    
+                    img_plot = bssfp.sequence(self.info, self.data, self.index_list, 
+                                              prep_num=1,flow=True, time=self.time, 
+                                              frame_proton=self.frame_proton, flow_time=self.flow_time)
                     img = img_plot.read_sequence(save_path=self.save_path, img_info='TI5_' + str(j))
                     # 取TI + TE
                     time += (self.TR_time - self.center_line_time)
                     self.img_list.append(img)
-                    self.data = img_plot.data
-                    self.relax(self.interval)
+                    # self.data, self.frame_proton = img_plot.data, img_plot.frame_proton
+                    self.data, self.frame_proton, self.time = img_plot.data, img_plot.frame_proton, img_plot.frame_time
+
+                    self.data, self.time = \
+                        flowpool.free_flow(
+                            data=self.data, time=self.interval, info=self.info, frame_prot=self.frame_proton,
+                            time_before=self.time, flow_time=self.flow_time, 
+                            etf=self.each_time_flow, index_list=self.index_list, flow=False
+                        )
                     time += self.interval
-                    # print(self.data[10, 32, 0])
+                    # print(self.data[0, 0, 0])
+                    self.frame_proton.now_update()
                 time += self.inversion_interval
-                self.relax(self.inversion_interval)
+                # self.relax(self.inversion_interval)
+                self.data, self.time = \
+                        flowpool.free_flow(
+                            data=self.data, time=self.inversion_interval, info=self.info, frame_prot=self.frame_proton,
+                            time_before=self.time, flow_time=self.flow_time, 
+                            etf=self.each_time_flow, index_list=self.index_list, flow=False
+                        )
+                self.frame_proton.now_update()
             elif i == 1:
                 for j in range(3):
                     # 开销时间：(num_N_pe + 1 / 2) * TR
                     time += self.center_line_time
                     self.readout_time.append(time)
-                    img_plot = bssfp.sequence(self.info, self.data, self.li_vassel, self.li_muscle, prep_num=1, flow=True, time=self.time)
+                    img_plot = bssfp.sequence(self.info, self.data, self.index_list, 
+                                              prep_num=1, flow=True, time=self.time, 
+                                              frame_proton=self.frame_proton, flow_time=self.flow_time)
                     img = img_plot.read_sequence(save_path=self.save_path, img_info='TI3_' + str(j))
                     time += (self.TR_time - self.center_line_time)
                     self.img_list.append(img)
-                    self.data = img_plot.data
-                    self.relax(self.interval)
+                    # self.data, self.frame_proton = img_plot.data, img_plot.frame_proton
+                    self.data, self.frame_proton, self.time = img_plot.data, img_plot.frame_proton, img_plot.frame_time
+                    # self.relax(self.interval)
+                    self.data, self.time = \
+                        flowpool.free_flow(
+                            data=self.data, time=self.interval, time_before=self.time, info=self.info,
+                            flow_time=self.flow_time, frame_proton=self.frame_proton,flow=False,
+                            etf=self.each_time_flow, index_list=self.index_list
+                        )
                     time += self.interval
+                    self.frame_proton.now_update()
         self.readout_time = torch.Tensor(self.readout_time)[self.readout_index]
         print(self.readout_time)
         return self.readout_time, self.img_list
@@ -195,3 +193,47 @@ class bSSFP_MOLLI:
 # plt.subplot(1,2,2)
 # plt.imshow(res, cmap=plt.cm.gray)
 # plt.show()
+
+# def relax(self, time):
+#     flow_num = int((self.time + time) // self.each_time_flow)
+#     # before_time = self.each_time_flow - self.time
+#     if (self.time + time) % self.each_time_flow == (self.time + time):
+#         rest_time = time
+#         self.time += time
+#     else:
+#         rest_time = (self.time + time) % self.each_time_flow
+#         self.time = rest_time
+
+#     for n in range(flow_num):
+#         t = self.each_time_flow - self.time if n == 0 else self.each_time_flow
+#         A, B = freprecess.res(t, self.T1[0], self.T2[0], 0)
+#         for (i, j) in self.li_vassel:
+#             self.data[i, j, :] = self.data[i, j, :] @ A.T + B
+#         A, B = freprecess.res(t, self.T1[1], self.T2[1], 0)
+#         for (i, j) in self.li_muscle:
+#             self.data[i, j, :] = self.data[i, j, :] @ A.T + B
+#         self.flow()
+
+#     A, B = freprecess.res(rest_time, self.T1[0], self.T2[0], 0)
+#     for (i, j) in self.li_vassel:
+#         self.data[i, j, :] = self.data[i, j, :] @ A.T + B
+#     A, B = freprecess.res(rest_time, self.T1[1], self.T2[1], 0)
+#     for (i, j) in self.li_muscle:
+#         self.data[i, j, :] = self.data[i, j, :] @ A.T + B
+
+    # def flow(self):
+    #     center_index = (self.fov / self.delta) // 2
+    #     lower, upper = int(center_index - self.bandwidth // 2), int(center_index + self.bandwidth // 2)
+    #     # print(lower, upper)
+    #     vassel = copy.deepcopy(self.data[:, lower:upper, :])
+    #     vassel = torch.roll(vassel, 1, 0)
+    #     # for i in range(len(vassel[0])):
+    #         # 初始化
+    #     vassel[0, :, :, 2] = 1
+    #     vassel[0, :, :, 1] = 0
+    #     vassel[0, :, :, 0] = 0
+    #     self.data[:, lower:upper] = vassel
+    #     # self.time -= self.each_time_flow
+    
+    # # 考虑在读取的过程中已经将x-y矢量打掉。
+    # # 在a/2 - T/R的收尾，可以考虑最后打一个 -a/2

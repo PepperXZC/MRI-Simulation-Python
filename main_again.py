@@ -75,7 +75,8 @@ class info:
         self.flow_speed = flow_speed
         self.each_time_flow = self.delta / (self.flow_speed * 1e-3) # TODO: 根据 flow_speed 算出 each_time：相隔多少毫秒，让 flow_speed 表示为每移动1格需要的时间 (ms)
 
-        self.w0 = self.gamma * 1e-4 * self.b0 # MHz
+        # self.w0 = self.gamma * 1e-4 * self.b0 # MHz
+        self.w0 = 0
         self.N_pe = int(self.fov / self.delta)
         self.N_read = int(self.fov / self.delta)
 
@@ -167,7 +168,7 @@ if __name__ == "__main__":
     # 矩形
     li_vassel, li_muscle = image.get_point_index(test_info.length, test_info.bandwidth)
     
-
+    index_list = [li_vassel, li_muscle]
     # 单点时使用这个：
     # point_index = [(10, 10)]
     # point_index = [(i, j) for (i, j) in ]
@@ -182,7 +183,7 @@ if __name__ == "__main__":
 
     # test_plot(test_info, slice_data, point_index)
 
-    bS_molli = bind_sequence.bSSFP_MOLLI(test_info, body.data, li_vassel, li_muscle, save_path="")
+    bS_molli = bind_sequence.bSSFP_MOLLI(test_info, body.data, index_list, save_path="")
     bS_molli.protocol()
 
     

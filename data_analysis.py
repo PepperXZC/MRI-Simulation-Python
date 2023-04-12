@@ -161,16 +161,17 @@ def T1_contrast():
 
 
 # fit_8()
-res_vassel, res_muscle, accuracy_vassel, accuracy_muscle = fit_one([1500, 1000])
-print(np.array(res_vassel).mean(), np.array(accuracy_vassel).mean(), np.array(res_vassel).std())
-print(np.array(res_muscle).mean(), np.array(accuracy_muscle).mean(), np.array(res_muscle).std())
+# res_vassel, res_muscle, accuracy_vassel, accuracy_muscle = fit_one([1500, 1000])
+# print(np.array(res_vassel).mean(), np.array(accuracy_vassel).mean(), np.array(res_vassel).std())
+# print(np.array(res_muscle).mean(), np.array(accuracy_muscle).mean(), np.array(res_muscle).std())
 
-# data = torch.load('E:\Study\毕业设计\MRI-simulation\data\(400+900j)\kspaceTI5_0.pt').cpu()
-# # print(li[i])
-# ft_mat = torch.fft.ifft2(data)
-# ft_mat = torch.fft.ifftshift(ft_mat)
-# plt.imshow(ft_mat.abs().numpy())
-# plt.show()
+data = torch.load('E:\kspaceTI5_0.pt').cpu()
+# print(li[i])
+ft_mat = torch.fft.ifft2(data)
+ft_mat = torch.fft.ifftshift(ft_mat)
+plt.imshow(ft_mat.abs().numpy())
+plt.show()
+print('hu')
 
 
 
