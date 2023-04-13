@@ -39,7 +39,7 @@ class info:
         thickness = 5,
         b0 = 1.5, # Tesla
         # tau_x = 1.0, # 原本应该是 receiver bandwidth， 但因为序列设计
-        receiver_bandwidth = 83.3, # khz
+        # receiver_bandwidth = 83.3, # khz
         gamma = 4258, # Hz / G
         flow_speed = 20, # cm/s
         delta = 0.1, # spatial resolution delta
@@ -159,7 +159,7 @@ def test_plot(test_info, slice_data, li_vassel, li_muscle):
 if __name__ == "__main__":
     test_info = info()
     gamma = 4258
-    body = image.body(64, 20, test_info.gamma)
+    body = image.body(test_info.fov / test_info.delta, test_info.bandwidth, test_info.gamma)
 
     # 这是个范围
     # point_index = (body.length // 2, body.length // 2 + 1)

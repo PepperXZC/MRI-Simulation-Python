@@ -3,8 +3,8 @@ import torch
 
 class body:
     def __init__(self, length, bandwidth, gamma) -> None:
-        self.length = length
-        self.data = torch.zeros(length, length, length, 3)
+        self.length = int(length)
+        self.data = torch.zeros(self.length, self.length, self.length, 3)
         # 进一步地简化：中心点初始值均为[0,0,1]
 
         # 正方形
