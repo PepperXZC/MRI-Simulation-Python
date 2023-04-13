@@ -11,7 +11,7 @@ def flow_vassel(data, flow_time, info, new_prot=None):
     lower, upper = int(center_index - info.bandwidth // 2), int(center_index + info.bandwidth // 2)
     vassel = copy.deepcopy(data[:, lower:upper, :])
     vassel = torch.roll(vassel, 1, 0)
-    vassel[0, :, :, :] = new_prot.output(new_prot.tensor, N=flow_time)
+    vassel[0, :, :, :] = new_prot.output(N=flow_time)
     # print(data[:, lower:upper, 0])
     print(vassel[0, :, 0, 1])
     print(data[-1, lower:upper, 0, 1])
@@ -20,7 +20,7 @@ def flow_vassel(data, flow_time, info, new_prot=None):
     return flow_time, data
 
 def freeprecess(data, time, index_list, flow_time,
-                gradient:list, new_prot=None, frame_prot=None, gradient_mat=None, info=None, flow=False):
+                gradient:list, new_prot=None, gradient_mat=None, info=None, flow=False):
     
     if len(gradient) == 0:
         A, B = freprecess.res(time, info.T1[0], info.T2[0], 0 + info.w0)
@@ -28,9 +28,9 @@ def freeprecess(data, time, index_list, flow_time,
             data[i, j, :] = data[i, j, :] @ A.T + B
         # 对新质子流入的操作
         if flow == False: # 没有gradient
-            if new_prot != None:
-                new_prot.record(t=time, n=flow_time)
-            frame_prot.record(t=time, n=flow_time) # 其它量都不会操作
+            assert new_prot != None
+            new_prot.record(t=time)
+            # frame_prot.record(t=time, n=flow_time) # 其它量都不会操作
         
         A, B = freprecess.res(time, info.T1[1], info.T2[1], 0 + info.w0)
         for (i, j) in index_list[1]:
@@ -54,8 +54,7 @@ def freeprecess(data, time, index_list, flow_time,
             data[i, j, :] = data[i, j, :] @ A.T + B
     return data, new_prot
 
-def free_flow(data, time, time_before, flow_time, info, new_prot=None, 
-              frame_prot=None, grad=[], etf=None, flow=False,
+def free_flow(data, time, time_before, flow_time, info, new_prot=None, grad=[], etf=None, flow=False,
               gradient_mat=None, index_list=None): # 用于 tau_y 或者 TR
     # gradient 统一乘以gamma过了, 取值: False, [Gx], [Gx, Gy]
     # time_before 表示之前的 self.time
@@ -74,7 +73,7 @@ def free_flow(data, time, time_before, flow_time, info, new_prot=None,
         new = 1
 
     if flow == False: # new = 1, 这里针对 readout 外的 relax
-        data, _ = freeprecess(data, time=time, gradient=grad, new_prot=new_prot, frame_prot=frame_prot, flow=False,
+        data, _ = freeprecess(data, time=time, gradient=grad, new_prot=new_prot, flow=False,
                            gradient_mat=gradient_mat, info=info, flow_time=flow_time, index_list=index_list)
         if new == 1:
             return data, new_time_before # new_prot == None, 用 _ 接收

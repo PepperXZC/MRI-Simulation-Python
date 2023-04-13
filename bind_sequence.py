@@ -79,7 +79,7 @@ class bSSFP_MOLLI:
     def inversion_pulse(self):
         # for (i, j) in self.li_vassel + self.li_muscle:
         self.data = self.data @ self.Rflip_180.T # 现在所有点都有数据
-        self.frame_proton.record(FA=180)
+        self.new_proton.record(FA=180)
     
     def plot(self):
         for index in range(len(self.img_list)):
@@ -100,7 +100,10 @@ class bSSFP_MOLLI:
         
         init_tensor = torch.zeros((1, self.bandwidth, self.slice_thickness, 3)).to(device)
         init_tensor[:, :, :, 2] = 1
-        self.frame_proton = new_proton.NewProton(self.info, self.data, device, init_tensor)
+        self.new_proton = new_proton.NewProton(self.info, self.data, device, init_tensor)
+        # self.frame_proton = new_proton.NewProton(self.info, self.data, device, init_tensor)
+        center_index = (self.fov / self.delta) // 2
+        lower, upper = int(center_index - self.bandwidth // 2), int(center_index + self.bandwidth // 2)
         for i in range(len(self.before_time)):
             time = 0
             self.inversion_pulse()
@@ -110,7 +113,7 @@ class bSSFP_MOLLI:
             self.data, self.time = \
                 flowpool.free_flow(
                     data=self.data, time=self.before_time[i], info=self.info, time_before=self.time, 
-                    flow_time=self.flow_time, frame_prot=self.frame_proton, flow=False,
+                    flow_time=self.flow_time, flow=False, new_prot=self.new_proton,
                     etf=self.each_time_flow, index_list=self.index_list
                 )
             time += self.before_time[i]
@@ -123,56 +126,64 @@ class bSSFP_MOLLI:
                     self.readout_time.append(time)
                     # 只有在读取的时候才考虑 proton， interval 之间不考虑
                     
-                    img_plot = bssfp.sequence(self.info, self.data, self.index_list, 
+                    img_plot = bssfp.sequence(self.info, self.data, self.index_list, new_proton=self.new_proton,
                                               prep_num=1,flow=True, time=self.time, 
-                                              frame_proton=self.frame_proton, flow_time=self.flow_time)
+                                            flow_time=self.flow_time)
                     img = img_plot.read_sequence(save_path=self.save_path, img_info='TI5_' + str(j))
                     # 取TI + TE
                     time += (self.TR_time - self.center_line_time)
                     self.img_list.append(img)
                     # self.data, self.frame_proton = img_plot.data, img_plot.frame_proton
-                    self.data, self.frame_proton, self.time = img_plot.data, img_plot.frame_proton, img_plot.frame_time
+                    self.data, self.time = img_plot.data, img_plot.time
 
                     self.data, self.time = \
                         flowpool.free_flow(
-                            data=self.data, time=self.interval, info=self.info, frame_prot=self.frame_proton,
-                            time_before=self.time, flow_time=self.flow_time, 
+                            data=self.data, time=self.interval, info=self.info,
+                            time_before=self.time, flow_time=self.flow_time, new_prot=self.new_proton,
                             etf=self.each_time_flow, index_list=self.index_list, flow=False
                         )
                     time += self.interval
+                    print(self.data[:, lower:upper, 0, 1])
+                    print(self.data[:, lower:upper, 0, 2])
                     # print(self.data[0, 0, 0])
-                    self.frame_proton.now_update()
+                    # self.frame_proton.now_update(self.data[0, lower:upper, :, :])
+                    now_flow_time = img_plot.flow_time
+                    self.new_proton.now_update(now_flow_time)
+                    # print(self.new_proton[0, :, 0, 1])
                 time += self.inversion_interval
                 # self.relax(self.inversion_interval)
                 self.data, self.time = \
                         flowpool.free_flow(
-                            data=self.data, time=self.inversion_interval, info=self.info, frame_prot=self.frame_proton,
-                            time_before=self.time, flow_time=self.flow_time, 
+                            data=self.data, time=self.inversion_interval, info=self.info,
+                            time_before=self.time, flow_time=self.flow_time, new_prot=self.new_proton,
                             etf=self.each_time_flow, index_list=self.index_list, flow=False
                         )
-                self.frame_proton.now_update()
+                # self.frame_proton.now_update()
+                now_flow_time = img_plot.flow_time
+                self.new_proton.now_update(now_flow_time)
             elif i == 1:
                 for j in range(3):
                     # 开销时间：(num_N_pe + 1 / 2) * TR
                     time += self.center_line_time
                     self.readout_time.append(time)
-                    img_plot = bssfp.sequence(self.info, self.data, self.index_list, 
-                                              prep_num=1, flow=True, time=self.time, 
-                                              frame_proton=self.frame_proton, flow_time=self.flow_time)
+                    img_plot = bssfp.sequence(self.info, self.data, self.index_list, new_proton=self.new_proton,
+                                              prep_num=1, flow=True, time=self.time, flow_time=self.flow_time)
                     img = img_plot.read_sequence(save_path=self.save_path, img_info='TI3_' + str(j))
                     time += (self.TR_time - self.center_line_time)
                     self.img_list.append(img)
                     # self.data, self.frame_proton = img_plot.data, img_plot.frame_proton
-                    self.data, self.frame_proton, self.time = img_plot.data, img_plot.frame_proton, img_plot.frame_time
+                    self.data, self.time = img_plot.data, img_plot.time
                     # self.relax(self.interval)
                     self.data, self.time = \
                         flowpool.free_flow(
                             data=self.data, time=self.interval, time_before=self.time, info=self.info,
-                            flow_time=self.flow_time, frame_proton=self.frame_proton,flow=False,
+                            flow_time=self.flow_time, flow=False, new_prot=self.new_proton,
                             etf=self.each_time_flow, index_list=self.index_list
                         )
                     time += self.interval
-                    self.frame_proton.now_update()
+                    # self.frame_proton.now_update()
+                    now_flow_time = img_plot.flow_time
+                    self.new_proton.now_update(now_flow_time)
         self.readout_time = torch.Tensor(self.readout_time)[self.readout_index]
         print(self.readout_time)
         return self.readout_time, self.img_list

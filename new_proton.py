@@ -89,7 +89,7 @@ class NewProton:
             tensor[0, j, :] = tensor[0, j, :] @ A.T + B
         return tensor
 
-    def output(self, tensor, N=None):
+    def output(self, N=None):
         # 这里 n 表示这是第n个需要给出的proton组
         if N != None:
             self.y0 = self.y_max + N * self.delta
@@ -117,6 +117,6 @@ class NewProton:
         self.record(t=time)
         return new_time_before if new == 1 else st
     
-    def now_update(self):
-        self.tensor = self.output(self.tensor)
-        self.history = [] # 把之前所有的记录全部保存，只对frame_proton做！
+    def now_update(self, N=None):
+        self.tensor = self.output(N)
+        self.history = []

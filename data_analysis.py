@@ -165,7 +165,7 @@ def T1_contrast():
 # print(np.array(res_vassel).mean(), np.array(accuracy_vassel).mean(), np.array(res_vassel).std())
 # print(np.array(res_muscle).mean(), np.array(accuracy_muscle).mean(), np.array(res_muscle).std())
 
-data = torch.load('E:\kspaceTI5_0.pt').cpu()
+data = torch.load('E:\kspaceTI3_0.pt').cpu()
 # print(li[i])
 ft_mat = torch.fft.ifft2(data)
 ft_mat = torch.fft.ifftshift(ft_mat)

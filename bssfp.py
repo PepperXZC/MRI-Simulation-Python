@@ -30,7 +30,7 @@ def get_sequence_info(info, prep_num):
 
 class sequence:
     # def __init__(self, fa, TR, TFE, point_tensor, gradient, gamma, tau_y, fov, delta, delta_t) -> None:
-    def __init__(self, info, body_slice, index_list, prep_num, flow, time, frame_proton, flow_time) -> None:
+    def __init__(self, info, body_slice, index_list, prep_num, flow, time, new_proton, flow_time) -> None:
         self.flip_angle = info.fa * math.pi / 180 # 假设读入60，为角度制。默认60x
         self.T1 = info.T1
         self.T2 = info.T2
@@ -84,8 +84,8 @@ class sequence:
 
         self.flow_time = flow_time
         # self.new_proton = torch.zeros((1, self.bandwidth, self.slice_thickness, 3)).to(device)
-        self.frame_proton = frame_proton
-        self.new_proton = copy.deepcopy(self.frame_proton) # 只在这里记录带有梯度的信息，output也用这个
+        # self.frame_proton = frame_proton
+        self.new_proton = new_proton # 只在这里记录带有梯度的信息，output也用这个
     
     # def generate_new_point():
         
@@ -97,7 +97,7 @@ class sequence:
         Rflip = matrix_rot.xrot(fa * math.pi / 180).to(device)
         self.data = self.data @ Rflip.T
         self.new_proton.record(FA=fa)
-        self.frame_proton.record(FA=fa)
+        # self.frame_proton.record(FA=fa)
         # 这里time一般都是0
         # time = self.TE - self.tau_x / 2 - self.tau_y
         # self.freeprecess(time)
@@ -118,10 +118,10 @@ class sequence:
             Rflip = matrix_rot.xrot(fa * math.pi / 180).to(device)
             self.data = self.data @ Rflip.T
             self.new_proton.record(FA=fa)
-            self.frame_proton.record(FA=fa)
+            # self.frame_proton.record(FA=fa)
             TR = TR_sequence[i].item()
             self.data, self.time = flowpool.free_flow(
-                data=self.data, time=TR, new_prot=self.new_proton, frame_prot=self.frame_proton, info=self.info, flow=False,
+                data=self.data, time=TR, new_prot=self.new_proton, info=self.info, flow=False,
                 time_before=self.time, flow_time=self.flow_time, etf=self.each_time_flow, index_list=self.index_list
             )
             # self.temp_x.append(self.data[self.point_index[0], self.point_index[0], 0, 0].cpu())
@@ -223,7 +223,7 @@ class sequence:
         self.prep_RF(fa_sequence, TR_sequence, self.prep_num)
         for i in tqdm(range(self.N_pe)):
             self.RF(fa_sequence[i + self.prep_num].item())
-            now_etf = frame_time if i != 0 else copy.deepcopy(self.time)
+            # now_etf = frame_time if i != 0 else copy.deepcopy(self.time)
             # print(self.data[:, lower:upper, 0, 1])
             self.phase_encoding(i)
             # print(self.data[:, lower:upper, 0, 1])
@@ -231,11 +231,12 @@ class sequence:
             # print(self.data[:, lower:upper, 0, 1])
             self.rewind(i)
             print(self.data[:, lower:upper, 0, 1])
-            frame_time = self.frame_proton.frame_time_update(now_etf, self.TR, self.each_time_flow)
+            # frame_time = self.frame_proton.frame_time_update(now_etf, self.TR, self.each_time_flow)
+            # assert self.time == frame_time
 
         print(save_path + '\\kspace'+ img_info +'.pt')
         torch.save(self.kspace_img, save_path + '\\kspace'+ img_info +'.pt')
-        self.frame_time = frame_time
+        # self.frame_time = frame_time
 
         
         print(self.data[:, lower:upper, 0])
