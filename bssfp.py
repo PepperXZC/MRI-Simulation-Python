@@ -21,7 +21,7 @@ def sign(num):
         return -1
 
 def get_sequence_info(info, prep_num):
-    fa_sequence, TR_sequence = torch.zeros(info.N_pe + prep_num), torch.ones(info.N_pe + prep_num) * info.TR
+    fa_sequence, TR_sequence = torch.zeros(info.N_pe + prep_num), (torch.ones(info.N_pe + prep_num) * info.TR)
     fa_sequence[0], TR_sequence[0] = info.fa / 2, info.TR / 2
     for i in range (1, info.N_pe + + prep_num):
         fa_sequence[i] = sign((i+1) % 2) * info.fa
