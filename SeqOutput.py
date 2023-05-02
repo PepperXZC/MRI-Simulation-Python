@@ -1,7 +1,6 @@
 import main_again
 import yaml
 import numpy as np
-import bssfp
 import copy
 test_info = main_again.info(thickness=0.5)
 
@@ -10,6 +9,13 @@ def sign(num):
         return 1
     else:
         return -1
+    
+def get_sequence_info(info, prep_num):
+    fa_sequence, TR_sequence = np.zeros(info.N_pe + prep_num), (np.ones(info.N_pe + prep_num) * info.TR)
+    fa_sequence[0], TR_sequence[0] = info.fa / 2, info.TR / 2
+    for i in range (1, info.N_pe + + prep_num):
+        fa_sequence[i] = sign((i+1) % 2) * info.fa
+    return fa_sequence, TR_sequence
     
 def TR_node(fa_sequence, TR_sequence, i, info):
     fa = fa_sequence.tolist()[i]
@@ -62,7 +68,7 @@ def TR_node(fa_sequence, TR_sequence, i, info):
 def yaml_generate(info:main_again.info):
     # bssfp
     prep_num = 1
-    fa_sequence, TR_sequence = bssfp.get_sequence_info(info, prep_num)
+    fa_sequence, TR_sequence = get_sequence_info(info, prep_num)
 
     seq_list = []
     for i in range(info.N_pe + 1):

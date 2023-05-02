@@ -37,7 +37,7 @@ def freeprecess(data, time, index_list, flow_time,
             data[i, j, :] = data[i, j, :] @ A.T + B
 
     else:
-        assert flow == True
+        # assert flow == True
         for (i, j) in index_list[0]:
             df = gradient_mat[i, j]
             A, B = freprecess.res(time, info.T1[0], info.T2[0], df + info.w0)

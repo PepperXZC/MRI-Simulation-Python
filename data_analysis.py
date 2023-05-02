@@ -28,18 +28,19 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def plot_fft():
     
-    mat = torch.load("E:\Study\毕业设计\MRI-simulation\kspaceTI5_0.pt").cpu()
+    mat = torch.load("E:\Study\毕业设计\MRI-simulation\data\(1500+1000j)\kspaceTI5_0.pt").cpu()
     temp = abs(mat).numpy()
     plt.subplot(1,2,1)
-    # plt.imshow(temp, cmap=plt.cm.gray)
-    plt.imshow(temp)
+    plt.imshow(temp, cmap=plt.cm.gray)
+    plt.colorbar()
+    # plt.imshow(temp)
     length = 64
     ft_mat = torch.fft.ifft2(mat)
     ft_mat = torch.fft.ifftshift(ft_mat)
     res = abs(ft_mat).numpy()
     plt.subplot(1,2,2)
-    # plt.imshow(res, cmap=plt.cm.gray)
-    plt.imshow(res)
+    plt.imshow(res, cmap=plt.cm.gray)
+    # plt.imshow(res)
     plt.colorbar()
     # print(res)
     plt.show()
@@ -49,11 +50,11 @@ def model(x, A, B, t1):
 
 def eight_imgs_data(T1) -> np.ndarray:
     x = torch.Tensor([ 120,  320, 1120, 1320, 2120, 2320, 3120, 4120]).numpy()
-    # name = 'E:\Study\毕业设计\MRI-simulation\(1100+1200j)\kspace'
+    # name = 'E:\Study\毕业设计\MRI-simulation\data\(1500+1000j)\kspace'
 
     # name = 'E:\Study\毕业设计\MRI-simulation\data\(' + str(T1[0]) + '+' + str(T1[1]) + 'j)\\kspace'
     # name = 'E:\\Study\\flow_result\\' + str(T1[0]) + 'and' + str(T1[1]) + '\\kspace'
-    name = 'E:\\kspace'
+    name = 'E:\Study\毕业设计\MRI-simulation\FlowData\kspace'
     li = []
     for key in range(len([5, 3])):
         if key == 0:
@@ -149,7 +150,7 @@ def fit_8():
         df.to_csv(path)
             
             # df.iloc[0, 0] = np.array(res_vassel).mean() + np.array(res_muscle).mean() * 1j
-    df.to_csv("result.csv")
+    # df.to_csv("result.csv")
     # print((961 - 1000) / 1000)
     # x_temp = np.arange(x.min(), x.max(), 1)
     # y = model(x_temp, param[0], param[1], param[2])
@@ -161,50 +162,12 @@ def T1_contrast():
 
 
 # fit_8()
+# plot_fft()
 res_vassel, res_muscle, accuracy_vassel, accuracy_muscle = fit_one([1500, 1000])
 print(np.array(res_vassel).mean(), np.array(accuracy_vassel).mean(), np.array(res_vassel).std())
 print(np.array(res_muscle).mean(), np.array(accuracy_muscle).mean(), np.array(res_muscle).std())
 
-# data = torch.load('E:\kspaceTI3_0.pt').cpu()
-# # print(li[i])
-# ft_mat = torch.fft.ifft2(data)
-# ft_mat = torch.fft.ifftshift(ft_mat)
-# plt.imshow(ft_mat.abs().numpy())
-# plt.show()
-# print('hu')
 
-
-
-
-
-
-y = torch.Tensor([-0.7816, -0.6536,  0.2293,  0.2763,  0.5942,  0.6116,  0.7318,  0.7828])
-# x = torch.arange(0, 8, 1)
-x = torch.Tensor([ 15.1000, 115.1000, 215.1000, 315.1000, 415.1000, 575.2000, 675.2000,
-        775.2000])
-
-A = torch.randn(1, requires_grad=True)
-B = torch.randn(1, requires_grad=True)
-# t1 = torch.ones(1, requires_grad=True)
-t1 = torch.ones(1) * 200
-t1.requires_grad_(True)
-# print(t1)
-
-def model(x, A, B, t1):
-    return A - B * torch.exp(- x / t1)
-
-def squared_loss(y_hat, y):  #@save
-    """均方损失"""
-    return (y_hat - y.reshape(y_hat.shape)) ** 2 / 2
-
-def sgd(params, lr, batch_size):  #@save
-    """小批量随机梯度下降"""
-    with torch.no_grad():
-        for param in params:
-            param -= lr * param.grad / batch_size
-            param.grad.zero_()
-            
-import matplotlib.pyplot as plt
 
 # annotation for regression
 

@@ -30,7 +30,7 @@ def get_sequence_info(info, prep_num):
 
 class sequence:
     # def __init__(self, fa, TR, TFE, point_tensor, gradient, gamma, tau_y, fov, delta, delta_t) -> None:
-    def __init__(self, info, body_slice, index_list, prep_num, flow, time, new_proton, flow_time) -> None:
+    def __init__(self, info, body_slice, index_list, prep_num, flow:bool, time, new_proton, flow_time) -> None:
         self.flip_angle = info.fa * math.pi / 180 # 假设读入60，为角度制。默认60x
         self.T1 = info.T1
         self.T2 = info.T2
@@ -54,6 +54,8 @@ class sequence:
         # self.time 记录没有flow但已经frep的时间
         if self.flow == True:
             self.time = time
+        else:
+            self.time = 0
         self.delta_t = info.delta_t
         self.info = info
         self.prep_num = prep_num
@@ -148,8 +150,15 @@ class sequence:
         # assert self.gradient_matrix[32, 32] == 0
         # self.temp_x, self.temp_z = [], []
         # self.free_flow(self.tau_y, gradient=[Gx * self.gamma, G_diff])
-        self.data, self.time, self.new_proton, self.flow_time = flowpool.free_flow(
-            data=self.data, time=self.tau_y, flow=True,
+
+        # self.data, self.time, self.new_proton, self.flow_time = flowpool.free_flow(
+        #     data=self.data, time=self.tau_y, flow=self.flow,
+        #     time_before=self.time, flow_time=self.flow_time, new_prot=self.new_proton, info=self.info,
+        #     etf=self.each_time_flow, grad=[Gx * self.gamma, G_diff], gradient_mat=self.gradient_matrix,
+        #     index_list=self.index_list
+        # )
+        self.data, self.time = flowpool.free_flow(
+            data=self.data, time=self.tau_y, flow=self.flow,
             time_before=self.time, flow_time=self.flow_time, new_prot=self.new_proton, info=self.info,
             etf=self.each_time_flow, grad=[Gx * self.gamma, G_diff], gradient_mat=self.gradient_matrix,
             index_list=self.index_list
@@ -176,13 +185,22 @@ class sequence:
         for i in range(len(Gx_time)):
             time = self.delta_t
 
-            self.data, self.time, self.new_proton, self.flow_time = \
+            # self.data, self.time, self.new_proton, self.flow_time = \
+            #     flowpool.free_flow(
+            #     data=self.data, time=time, new_prot=self.new_proton,info=self.info,
+            #     time_before=self.time, flow_time=self.flow_time,flow=self.flow,
+            #     etf=self.each_time_flow, grad=[self.Gx * self.gamma], gradient_mat=self.gradient_matrix,
+            #     index_list=self.index_list
+            # )
+
+            self.data, self.time = \
                 flowpool.free_flow(
                 data=self.data, time=time, new_prot=self.new_proton,info=self.info,
-                time_before=self.time, flow_time=self.flow_time,flow=True,
+                time_before=self.time, flow_time=self.flow_time,flow=self.flow,
                 etf=self.each_time_flow, grad=[self.Gx * self.gamma], gradient_mat=self.gradient_matrix,
                 index_list=self.index_list
             )
+
             # print(self.new_proton.history[-1])
             img_matrix = torch.complex(self.data[:, :, :, 0], self.data[:, :, :, 1]).to(device)
             sample = img_matrix.sum()
@@ -203,10 +221,18 @@ class sequence:
         # self.gradient_matrix *= self.tau_y
         self.gradient_matrix = self.gradient_matrix.to(device)
 
-        self.data, self.time, self.new_proton, self.flow_time = \
+        # self.data, self.time, self.new_proton, self.flow_time = \
+        #         flowpool.free_flow(
+        #         data=self.data, time=self.tau_y, new_prot=self.new_proton, info=self.info,
+        #         time_before=self.time, flow_time=self.flow_time,flow=self.flow,
+        #         etf=self.each_time_flow, grad=[Gx * self.gamma, - G_diff], gradient_mat=self.gradient_matrix,
+        #         index_list=self.index_list
+        #     )
+
+        self.data, self.time = \
                 flowpool.free_flow(
                 data=self.data, time=self.tau_y, new_prot=self.new_proton, info=self.info,
-                time_before=self.time, flow_time=self.flow_time,flow=True,
+                time_before=self.time, flow_time=self.flow_time,flow=self.flow,
                 etf=self.each_time_flow, grad=[Gx * self.gamma, - G_diff], gradient_mat=self.gradient_matrix,
                 index_list=self.index_list
             )

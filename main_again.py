@@ -43,7 +43,7 @@ class info:
         gamma = 4258, # Hz / G
         flow_speed = 20, # cm/s
         delta = 0.1, # spatial resolution delta
-        fov = 6.4,  # cm
+        fov = 12.8,  # cm
         # tau_y = 0.29
         
     ) -> None:

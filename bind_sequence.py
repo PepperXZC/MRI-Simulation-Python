@@ -126,8 +126,11 @@ class bSSFP_MOLLI:
                     self.readout_time.append(time)
                     # 只有在读取的时候才考虑 proton， interval 之间不考虑
                     
+                    # img_plot = bssfp.sequence(self.info, self.data, self.index_list, new_proton=self.new_proton,
+                    #                           prep_num=1,flow=True, time=self.time, 
+                    #                         flow_time=self.flow_time)
                     img_plot = bssfp.sequence(self.info, self.data, self.index_list, new_proton=self.new_proton,
-                                              prep_num=1,flow=True, time=self.time, 
+                                              prep_num=1,flow=False, time=self.time, 
                                             flow_time=self.flow_time)
                     img = img_plot.read_sequence(save_path=self.save_path, img_info='TI5_' + str(j))
                     # 取TI + TE
@@ -160,14 +163,14 @@ class bSSFP_MOLLI:
                         )
                 # self.frame_proton.now_update()
                 now_flow_time = img_plot.flow_time
-                self.new_proton.now_update(now_flow_time)
+                # self.new_proton.now_update(now_flow_time)
             elif i == 1:
                 for j in range(3):
                     # 开销时间：(num_N_pe + 1 / 2) * TR
                     time += self.center_line_time
                     self.readout_time.append(time)
                     img_plot = bssfp.sequence(self.info, self.data, self.index_list, new_proton=self.new_proton,
-                                              prep_num=1, flow=True, time=self.time, flow_time=self.flow_time)
+                                              prep_num=1, flow=False, time=self.time, flow_time=self.flow_time)
                     img = img_plot.read_sequence(save_path=self.save_path, img_info='TI3_' + str(j))
                     time += (self.TR_time - self.center_line_time)
                     self.img_list.append(img)
@@ -183,7 +186,7 @@ class bSSFP_MOLLI:
                     time += self.interval
                     # self.frame_proton.now_update()
                     now_flow_time = img_plot.flow_time
-                    self.new_proton.now_update(now_flow_time)
+                    # self.new_proton.now_update(now_flow_time)
         self.readout_time = torch.Tensor(self.readout_time)[self.readout_index]
         print(self.readout_time)
         return self.readout_time, self.img_list
